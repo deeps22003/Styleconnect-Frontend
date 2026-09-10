@@ -1,0 +1,94 @@
+:root {
+    --sc-ink: #26151F;
+    --sc-ink-soft: #6E5A67;
+    --sc-ink-faint: #9C8C97;
+
+    --sc-cream: #FBF5F1;
+    --sc-cream-2: #F6E9E3;
+
+    --sc-card: #FFFFFF;
+
+    --sc-rose: #9C3457;
+    --sc-rose-deep: #7A2645;
+    --sc-rose-light: #F4DBE1;
+    --sc-rose-wash: #FCEEF1;
+
+    --sc-gold: #BD8F4F;
+    --sc-gold-light: #F1E2C4;
+
+    --sc-plum: #2C1130;
+    --sc-plum-2: #3A1739;
+
+    --sc-danger: #B42318;
+
+     /* ================================
+       BORDERS
+       ================================ */
+ 
+    --border-color: rgba(38, 21, 31, 0.10);
+    --border-color-soft: rgba(38, 21, 31, 0.06);
+ 
+ 
+    /* ================================
+       BORDER RADIUS
+       ================================ */
+ 
+    --radius-sm: 10px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --radius-xl: 28px;
+    --radius-pill: 999px;
+ 
+ 
+    /* ================================
+       SHADOWS
+       ================================ */
+ 
+    --shadow-sm:
+        0 8px 20px -10px rgba(44, 17, 48, 0.18);
+ 
+    --shadow-md:
+        0 18px 40px -18px rgba(44, 17, 48, 0.25);
+ 
+    --shadow-lg:
+        0 30px 60px -25px rgba(44, 17, 48, 0.35);
+ 
+ 
+    /* ================================
+       TYPOGRAPHY
+       ================================ */
+ 
+    --font-heading: "Fraunces", serif;
+    --font-body: 'Plus Jakarta Sans', -apple-system, sans-serif;
+ 
+ 
+    /* ================================
+       FONT WEIGHTS
+       ================================ */
+ 
+    --font-regular: 400;
+    --font-medium: 500;
+    --font-semibold: 600;
+    --font-bold: 700;
+    --font-extrabold: 800;
+ 
+ 
+    /* ================================
+       TRANSITIONS
+       ================================ */
+ 
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.2s ease;
+    --transition-slow: 0.3s ease;
+ 
+ 
+    /* ================================
+       Z-INDEX
+       ================================ */
+ 
+    --z-base: 1;
+    --z-dropdown: 100;
+    --z-sticky: 200;
+    --z-modal: 1000;
+
+}
