@@ -26,7 +26,7 @@ const EMPTY_OBJECT = {};
 
 export default function CustomerDashboard() {
   const dispatch = useDispatch();
-  
+
   // 1. Resolve logged-in user dynamically from Redux or localStorage
   const authUser = useSelector((state) => state.auth?.user || state.user || EMPTY_OBJECT);
   const [currentUser, setCurrentUser] = useState(() => {
@@ -54,6 +54,7 @@ export default function CustomerDashboard() {
 
   const [services, setServices] = useState([]);
   const [experts, setExperts] = useState([]);
+  const [userAddresses, setUserAddresses] = useState([]);
 
   // Modal Visibility States
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -78,8 +79,11 @@ export default function CustomerDashboard() {
 
     const savedServices = localStorage.getItem('services');
     const savedExperts = localStorage.getItem('experts');
+    const savedAddresses = localStorage.getItem('userAddresses');
+
     if (savedServices) setServices(JSON.parse(savedServices));
     if (savedExperts) setExperts(JSON.parse(savedExperts));
+    if (savedAddresses) setUserAddresses(JSON.parse(savedAddresses));
   }, [dispatch, userId]);
 
   // Modal Toggle Handlers
@@ -107,14 +111,14 @@ export default function CustomerDashboard() {
       appointmentId: 0,
       customerId: Number(userId),
       customerName: loggedInName,
-      serviceName: rawFormData.serviceName || 'Custom Service',
-      expertName: rawFormData.expertName || 'Assigned Specialist',
+      serviceCategoryId: Number(rawFormData.serviceCategoryId),
+      expertId: Number(rawFormData.expertId),
       appointmentDate: rawFormData.appointmentDate,
       startTime: rawFormData.startTime || '10:00 AM',
       endTime: rawFormData.endTime || '11:30 AM',
-      totalPrice: parseFloat(String(rawFormData.totalPrice || 2500).replace(/[^0-9.-]+/g, '')) || 2500,
-      locationType: rawFormData.locationType || 'Doorstep Service',
-      address: rawFormData.serviceAddress || rawFormData.address || 'Client Address',
+      occasion: rawFormData.occasion || '',
+      totalPrice: parseFloat(String(rawFormData.totalPrice || 0).replace(/[^0-9.-]+/g, '')) || 0,
+      addressId: Number(rawFormData.addressId) || 0,
       appointmentStatusId: 1
     };
 
@@ -139,16 +143,17 @@ export default function CustomerDashboard() {
     }
   };
 
+  // RE-FETCH APPOINTMENTS ON SUCCESSFUL FEEDBACK SUBMISSION
   const handleFeedbackSubmit = () => {
     setIsFeedbackModalOpen(false);
     setSelectedAppointment(null);
-    alert('Thank you! Your feedback has been recorded.');
+    loadAppointments(); // Re-fetch appointments to update state instantly
   };
 
   return (
     <Box sx={{ backgroundColor: '#FAF6F0', minHeight: '100vh', py: 4, px: 2 }}>
       <Container maxWidth="md">
-        
+
         {/* Profile Card Header */}
         <ProfileCard 
           user={currentUser}
@@ -241,6 +246,7 @@ export default function CustomerDashboard() {
             onSave={handleAddBooking}
             services={services}
             experts={experts}
+            userAddresses={userAddresses}
           />
         )}
 
@@ -260,7 +266,7 @@ export default function CustomerDashboard() {
         )}
 
         {isFeedbackModalOpen && (
-          <FeedbackModal 
+          <FeedbackModal
             open={isFeedbackModalOpen}
             isOpen={isFeedbackModalOpen}
             appointment={selectedAppointment}
@@ -268,10 +274,10 @@ export default function CustomerDashboard() {
               setIsFeedbackModalOpen(false);
               setSelectedAppointment(null);
             }}
+            onSuccess={handleFeedbackSubmit}
             onSubmit={handleFeedbackSubmit}
           />
         )}
-
       </Container>
     </Box>
   );

@@ -93,6 +93,7 @@ export default function EditBookingModal({
 
   const [formData, setFormData] = useState({
     serviceName: '',
+    occasion: '',
     expertName: '',
     appointmentDate: todayStr,
     startTime: '',
@@ -106,7 +107,12 @@ export default function EditBookingModal({
     if (booking) {
       const parsedDate = formatToIsoDate(booking.appointmentDate || booking.date);
       setFormData({
-        serviceName: booking.serviceName || booking.occasion || booking.service || '',
+        // ✅ FIX 1: Fetch actual service name separate from occasion
+        serviceName: booking.serviceCategoryName || booking.serviceName || booking.service || '',
+        
+        // ✅ FIX 2: Fetch occasion independently into its own field
+        occasion: booking.occasion || '',
+        
         expertName: booking.expertBusinessName || booking.expertName || booking.expertFullName || '',
         appointmentDate: parsedDate || todayStr,
         startTime: formatTo12Hour(booking.startTime || booking.time || ''),
@@ -138,7 +144,8 @@ export default function EditBookingModal({
         appointmentDate: finalDate,
         date: finalDate,
         expertBusinessName: formData.expertName,
-        address: formData.serviceAddress
+        address: formData.serviceAddress,
+        occasion: formData.occasion
       });
     }
     if (onClose) onClose();
@@ -177,7 +184,7 @@ export default function EditBookingModal({
         <DialogContent dividers sx={{ borderColor: '#f0e6e1' }}>
           <Stack spacing={2.5}>
             
-            {/* SELECT SERVICE */}
+            {/* SELECT / DISPLAY SERVICE */}
             {serviceOptions.length > 0 ? (
               <TextField
                 select
@@ -212,6 +219,19 @@ export default function EditBookingModal({
                 size="small"
               />
             )}
+
+            {/* ✅ FIX 3: OCCASION FIELD */}
+            <TextField
+              fullWidth
+              label="Occasion"
+              name="occasion"
+              value={formData.occasion}
+              onChange={handleChange}
+              placeholder="e.g. Wedding, Reception, Party"
+              required
+              variant="outlined"
+              size="small"
+            />
 
             {/* SELECT EXPERT */}
             {expertOptions.length > 0 ? (
@@ -262,7 +282,7 @@ export default function EditBookingModal({
               size="small"
               slotProps={{
                 inputLabel: { shrink: true },
-                htmlInput: { min: todayStr } // Disallows picking past dates in browser picker
+                htmlInput: { min: todayStr }
               }}
             />
 

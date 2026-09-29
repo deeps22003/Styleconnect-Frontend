@@ -11,10 +11,10 @@ import {
   Stack, 
   CircularProgress 
 } from '@mui/material';
+import apiClient from '../../services/apiClient';
 
 const EMPTY_OBJECT = {};
 
-// Helper to convert 24-hour time string ("13:00:00" or "13:00") into 12-hour format ("01:00 PM")
 const formatTime12Hour = (timeStr) => {
   if (!timeStr) return '';
   const cleanStr = timeStr.trim().toUpperCase();
@@ -35,35 +35,39 @@ const formatTime12Hour = (timeStr) => {
   return `${formattedHour}:${minutes} ${period}`;
 };
 
-// Helper to format date and start/end time ranges dynamically
 const formatDateTime = (appointment) => {
-  let formattedDate = appointment.appointmentDate || appointment.date || '';
+  let dateVal = appointment.appointmentDate || appointment.date || appointment.feedbackDate || '';
+  if (!dateVal) return 'Scheduled Time N/A';
 
-  // Format ISO date strings into legible format (e.g., "Oct 20, 2026")
-  if (formattedDate && !isNaN(Date.parse(formattedDate))) {
-    const parsedDate = new Date(formattedDate);
-    formattedDate = parsedDate.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+  if (typeof dateVal === 'string' && dateVal.includes(' ') && !dateVal.includes('T')) {
+    dateVal = dateVal.trim().replace(' ', 'T');
   }
 
-  const rawStartTime = appointment.startTime || appointment.time || appointment.slotTime || '';
-  const rawEndTime = appointment.endTime || appointment.slotEndTime || '';
+  const parsedDate = new Date(dateVal);
+  if (isNaN(parsedDate.getTime())) return 'Scheduled Time N/A';
 
-  const startTime = formatTime12Hour(rawStartTime);
-  const endTime = formatTime12Hour(rawEndTime);
+  const formattedDate = parsedDate.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
 
-  if (startTime && endTime) {
-    return `${formattedDate} at ${startTime} - ${endTime}`;
+  const rawStartTime = appointment.startTime || appointment.time || appointment.slotTime;
+  const rawEndTime = appointment.endTime || appointment.slotEndTime;
+
+  if (rawStartTime) {
+    const startTime = formatTime12Hour(rawStartTime);
+    const endTime = rawEndTime ? formatTime12Hour(rawEndTime) : '';
+    return endTime ? `${formattedDate} at ${startTime} - ${endTime}` : `${formattedDate} at ${startTime}`;
   }
 
-  if (startTime) {
-    return `${formattedDate} at ${startTime}`;
-  }
+  const formattedTime = parsedDate.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
 
-  return formattedDate || 'Scheduled Time N/A';
+  return `${formattedDate} at ${formattedTime}`;
 };
 
 export default function AppointmentList({ 
@@ -74,10 +78,8 @@ export default function AppointmentList({
 }) {
   const dispatch = useDispatch();
 
-  // 1. Get logged-in user dynamically from Redux auth state
   const authUser = useSelector((state) => state.auth?.user);
 
-  // 2. Resolve customerId dynamically
   const activeCustomerId = 
     propCustomerId || 
     authUser?.customerId || 
@@ -89,10 +91,11 @@ export default function AppointmentList({
   const error = appointmentsState.error || null;
 
   const [expertsList, setExpertsList] = useState([]);
+  const [servicesList, setServicesList] = useState([]);
 
   useEffect(() => {
     if (!propsAppointments && activeCustomerId) {
-      dispatch(fetchAppointmentsThunk(activeCustomerId));
+      dispatch(fetchAppointmentsThunk({ userType: 1, userId: activeCustomerId }));
     }
 
     const savedExperts = localStorage.getItem('experts');
@@ -103,9 +106,59 @@ export default function AppointmentList({
         console.error('Error parsing experts from localStorage', err);
       }
     }
+
+    const savedServices = localStorage.getItem('services');
+    if (savedServices) {
+      try {
+        setServicesList(JSON.parse(savedServices));
+      } catch (err) {
+        console.error('Error parsing services from localStorage', err);
+      }
+    }
   }, [dispatch, activeCustomerId, propsAppointments]);
 
   const appointments = propsAppointments || reduxAppointments;
+
+  const handleFeedbackClick = async (appointment) => {
+    if (!onLeaveFeedback) return;
+
+    const targetAppointmentId = appointment.appointmentId || appointment.id;
+
+    if (appointment.feedbackId || appointment.ratingId || appointment.ratingValue || appointment.comments) {
+      onLeaveFeedback({
+        ...appointment,
+        appointmentId: targetAppointmentId,
+        feedbackId: appointment.feedbackId || appointment.ratingId,
+        ratingId: appointment.ratingId || appointment.feedbackId,
+        ratingValue: appointment.ratingValue || appointment.rating,
+        comments: appointment.comments || appointment.review
+      });
+      return;
+    }
+
+    try {
+      const existingFeedback = await apiClient.getFeedbackRatingByAppointmentId(targetAppointmentId);
+
+      if (existingFeedback) {
+        onLeaveFeedback({
+          ...appointment,
+          appointmentId: targetAppointmentId,
+          feedbackId: existingFeedback.feedbackId || existingFeedback.ratingId,
+          ratingId: existingFeedback.ratingId || existingFeedback.feedbackId,
+          ratingValue: existingFeedback.ratingValue || existingFeedback.rating,
+          comments: existingFeedback.comments || existingFeedback.review
+        });
+        return;
+      }
+    } catch (err) {
+      // Missing feedback fallback
+    }
+
+    onLeaveFeedback({
+      ...appointment,
+      appointmentId: targetAppointmentId
+    });
+  };
 
   if (loading && (!appointments || !appointments.length)) {
     return (
@@ -163,6 +216,28 @@ export default function AppointmentList({
           (exp) => exp.expertId === item.expertId || exp.id === item.expertId
         );
 
+        const matchedService = servicesList.find(
+          (srv) => srv.serviceCategoryId === item.serviceCategoryId || srv.id === item.serviceCategoryId
+        );
+
+        const serviceTitle = 
+          item.serviceCategoryName || 
+          item.serviceName || 
+          item.service || 
+          (matchedService ? matchedService.categoryName || matchedService.serviceName || matchedService.name : null);
+
+        const occasionTitle = item.occasion;
+
+        // COMBINED DISPLAY TITLE FOR SERVICE NAME & OCCASION
+        let displayTitle = 'General Service';
+        if (serviceTitle && occasionTitle) {
+          displayTitle = `${serviceTitle} - ${occasionTitle}`;
+        } else if (serviceTitle) {
+          displayTitle = serviceTitle;
+        } else if (occasionTitle) {
+          displayTitle = occasionTitle;
+        }
+
         const expertDisplayName = 
           item.expertBusinessName || 
           item.expertName || 
@@ -170,7 +245,6 @@ export default function AppointmentList({
           (matchedExpert ? matchedExpert.name || `${matchedExpert.firstName} ${matchedExpert.lastName}` : null) || 
           `Expert #${item.expertId || 'N/A'}`;
 
-        // Address directly mapped from backend AppointmentDto
         const displayAddress = 
           item.address || 
           item.serviceAddress || 
@@ -182,6 +256,14 @@ export default function AppointmentList({
             ? `apt-${item.id}-${index}` 
             : `apt-${index}`;
 
+        const hasFeedback = Boolean(
+          item.feedbackId || 
+          item.ratingId || 
+          item.ratingValue || 
+          item.comments || 
+          item.hasFeedback
+        );
+
         return (
           <Card 
             key={itemKey} 
@@ -189,11 +271,10 @@ export default function AppointmentList({
             sx={{ p: 1, textAlign: 'left', borderRadius: 2 }}
           >
             <CardContent sx={{ textAlign: 'left' }}>
-              {/* TOP ROW */}
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5, textAlign: 'left' }}>
                 <Box sx={{ textAlign: 'left' }}>
-                  <Typography variant="h6" component="h3" sx={{ color: 'text.primary', textAlign: 'left' }}>
-                    {item.occasion || item.serviceName || item.service || 'General Service'}
+                  <Typography variant="h6" component="h3" sx={{ color: 'text.primary', textAlign: 'left', fontWeight: 700 }}>
+                    {displayTitle}
                   </Typography>
                   <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.25, textAlign: 'left' }}>
                     Expert: <strong style={{ color: '#333' }}>{expertDisplayName}</strong>
@@ -213,7 +294,6 @@ export default function AppointmentList({
                 />
               </Box>
 
-              {/* META INFO ROW */}
               <Box 
                 sx={{ 
                   display: 'flex', 
@@ -227,7 +307,6 @@ export default function AppointmentList({
                   textAlign: 'left'
                 }}
               >
-                {/* DATE & TIME RANGE DISPLAY */}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <span>🗓️</span>
                   <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'left', fontWeight: 500 }}>
@@ -250,22 +329,26 @@ export default function AppointmentList({
                 </Box>
               </Box>
 
-              {/* ADDRESS ROW */}
               <Typography variant="body2" sx={{ color: 'text.primary', my: 1.5, fontSize: '0.88rem', textAlign: 'left', width: '100%' }}>
                 <strong>{isStudio ? 'Studio Address:' : 'Address:'}</strong>{' '}
                 {displayAddress}
               </Typography>
 
-              {/* ACTION BUTTONS */}
               <Stack direction="row" spacing={1.5} sx={{ mt: 2, justifyContent: 'flex-start' }}>
                 {isCompleted && (
                   <Button 
-                    variant="outlined" 
+                    variant={hasFeedback ? "outlined" : "contained"} 
                     color="primary"
                     size="small"
-                    onClick={() => onLeaveFeedback && onLeaveFeedback(item)}
+                    onClick={() => handleFeedbackClick(item)}
+                    sx={{
+                      borderRadius: '20px',
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      px: 2
+                    }}
                   >
-                    ★ Leave Feedback & Rating
+                    {hasFeedback ? '✏️ Edit Feedback & Rating' : '★ Leave Feedback & Rating'}
                   </Button>
                 )}
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Card,
   CardContent,
@@ -7,7 +7,9 @@ import {
   Button,
   Stack,
   Box,
-  Paper
+  Paper,
+  Rating,
+  Divider
 } from '@mui/material';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import PlaceIcon from '@mui/icons-material/Place';
@@ -16,59 +18,27 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 
 export default function ExpertAppointmentList({ 
-  appointments, 
+  appointments = [], 
+  feedbacks,
   onStatusChange,
   onConfirm,
   onDecline,
   onComplete 
 }) {
-  if (!appointments || appointments.length === 0) {
-    return (
-      <Paper elevation={0} sx={{ p: 4, textAlign: 'center', bgcolor: '#FDFBF7', borderRadius: 3, border: '1px solid #E0E0E0' }}>
-        <Typography variant="body1" color="text.secondary">
-          No appointment requests found.
-        </Typography>
-      </Paper>
-    );
-  }
+  const [servicesList, setServicesList] = useState([]);
 
-  // Unified status click delegates sending numeric Status IDs (2 = Confirmed, 3 = Declined, 4 = Completed)
-  const handleConfirm = (id) => {
-    if (onConfirm) onConfirm(id);
-    else if (onStatusChange) onStatusChange(id, 2);
-  };
-
-  const handleDecline = (id) => {
-    if (onDecline) onDecline(id);
-    else if (onStatusChange) onStatusChange(id, 3);
-  };
-
-  const handleComplete = (id) => {
-    if (onComplete) onComplete(id);
-    else if (onStatusChange) onStatusChange(id, 4);
-  };
-
-  // Helper to normalize status values across string names and numeric IDs
-  const resolveStatus = (item) => {
-    const statusId = item.appointmentStatusId ?? item.statusId;
-    if (typeof statusId === 'number') {
-      switch (statusId) {
-        case 2: return 'confirmed';
-        case 3: return 'declined';
-        case 4: return 'completed';
-        default: return 'pending';
+  useEffect(() => {
+    const savedServices = localStorage.getItem('services');
+    if (savedServices) {
+      try {
+        setServicesList(JSON.parse(savedServices));
+      } catch (err) {
+        console.error('Error parsing services from localStorage', err);
       }
     }
+  }, []);
 
-    const rawStr = item.statusName || item.appointmentStatusName || item.status || 'pending';
-    const lower = rawStr.toLowerCase();
-    if (lower.includes('confirm')) return 'confirmed';
-    if (lower.includes('declin') || lower.includes('cancel')) return 'declined';
-    if (lower.includes('complet')) return 'completed';
-    return 'pending';
-  };
-
-  // Format time values (e.g. "11:00 AM" or "11:00:00" -> "11:00 AM")
+  // Helper to format time strings safely
   const formatSingleTime = (timeStr) => {
     if (!timeStr) return '';
     if (timeStr.includes('AM') || timeStr.includes('PM')) return timeStr;
@@ -82,8 +52,9 @@ export default function ExpertAppointmentList({
     return `${String(h).padStart(2, '0')}:${minutes} ${ampm}`;
   };
 
-  // Helper to format date along with start time and end time range
+  // Helper to format appointment date & time
   const formatDateTime = (item) => {
+    if (!item) return 'Date not specified';
     const dateStr = item.appointmentDate || item.date || '';
     const startTimeStr = item.startTime || item.time || item.slotTime || '';
     const endTimeStr = item.endTime || item.slotEndTime || '';
@@ -107,13 +78,11 @@ export default function ExpertAppointmentList({
 
     const startTimeFormatted = formatSingleTime(startTimeStr);
 
-    // 1. If explicit endTime is present
     if (endTimeStr) {
       const endTimeFormatted = formatSingleTime(endTimeStr);
       return `${formattedDate} at ${startTimeFormatted} - ${endTimeFormatted}`;
     }
 
-    // 2. Fallback: Automatically calculate 90 minutes ahead if endTime is missing
     if (startTimeFormatted) {
       try {
         const [timePart, modifier] = startTimeFormatted.split(' ');
@@ -125,7 +94,6 @@ export default function ExpertAppointmentList({
         const startDate = new Date();
         startDate.setHours(hours, minutes, 0, 0);
 
-        // Add 90 minutes duration
         const endDate = new Date(startDate.getTime() + 90 * 60000);
 
         let endHours = endDate.getHours();
@@ -144,6 +112,25 @@ export default function ExpertAppointmentList({
     return formattedDate;
   };
 
+  const resolveStatus = (item) => {
+    const statusId = item.appointmentStatusId ?? item.statusId;
+    if (typeof statusId === 'number') {
+      switch (statusId) {
+        case 2: return 'confirmed';
+        case 3: return 'declined';
+        case 4: return 'completed';
+        default: return 'pending';
+      }
+    }
+
+    const rawStr = item.statusName || item.appointmentStatusName || item.status || 'pending';
+    const lower = rawStr.toLowerCase();
+    if (lower.includes('confirm')) return 'confirmed';
+    if (lower.includes('declin') || lower.includes('cancel')) return 'declined';
+    if (lower.includes('complet')) return 'completed';
+    return 'pending';
+  };
+
   const getBadgeStyle = (statusKey) => {
     switch (statusKey) {
       case 'confirmed':
@@ -157,6 +144,191 @@ export default function ExpertAppointmentList({
     }
   };
 
+  const handleConfirm = (id) => {
+    if (onConfirm) onConfirm(id);
+    else if (onStatusChange) onStatusChange(id, 2);
+  };
+
+  const handleDecline = (id) => {
+    if (onDecline) onDecline(id);
+    else if (onStatusChange) onStatusChange(id, 3);
+  };
+
+  const handleComplete = (id) => {
+    if (onComplete) onComplete(id);
+    else if (onStatusChange) onStatusChange(id, 4);
+  };
+
+  // -------------------------------------------------------------
+  // RENDER PATH 1: FEEDBACKS LIST VIEW (IF 'feedbacks' PROP PASSED)
+  // -------------------------------------------------------------
+  if (Array.isArray(feedbacks)) {
+    if (feedbacks.length === 0) {
+      return (
+        <Paper elevation={0} sx={{ p: 4, textAlign: 'center', bgcolor: '#FDFBF7', borderRadius: 3, border: '1px solid #E0E0E0' }}>
+          <Typography variant="body1" color="text.secondary">
+            No feedback or ratings received yet.
+          </Typography>
+        </Paper>
+      );
+    }
+
+    return (
+      <Stack spacing={2.5}>
+        {feedbacks.map((fb, index) => {
+          const feedbackId = fb.feedbackId || fb.ratingId || fb.id || index;
+          const appointmentId = fb.appointmentId || fb.appointment_id;
+
+          // Match appointment details from appointments array
+          const matchedApt = appointments.find(
+            (apt) => (apt.appointmentId || apt.id) === appointmentId
+          ) || fb.appointment || {};
+
+          const addressText = matchedApt.address?.addressLine1 
+            || matchedApt.serviceAddress 
+            || matchedApt.address 
+            || 'Doorstep Address';
+
+          const clientName = matchedApt.customerName 
+            || matchedApt.clientName 
+            || `${matchedApt.customer?.userProfile?.firstName || ''} ${matchedApt.customer?.userProfile?.lastName || ''}`.trim()
+            || fb.customerName 
+            || 'Valued Client';
+
+          const matchedService = servicesList.find(
+            (srv) => srv.serviceCategoryId === matchedApt.serviceCategoryId || srv.id === matchedApt.serviceCategoryId
+          );
+
+          const serviceTitle = 
+            matchedApt.serviceCategoryName || 
+            matchedApt.serviceName || 
+            matchedApt.service || 
+            (matchedService ? matchedService.categoryName || matchedService.serviceName || matchedService.name : null);
+
+          const occasionTitle = matchedApt.occasion;
+
+          let displayTitle = 'Beauty Service';
+          if (serviceTitle && occasionTitle) {
+            displayTitle = `${serviceTitle} - ${occasionTitle}`;
+          } else if (serviceTitle) {
+            displayTitle = serviceTitle;
+          } else if (occasionTitle) {
+            displayTitle = occasionTitle;
+          }
+
+          const ratingVal = fb.ratingValue ?? fb.rating ?? fb.score ?? 5;
+          const reviewText = fb.comments || fb.review || fb.comment || 'No comments provided.';
+
+          // UPDATED: Added fb.ratingDate fallback
+          const submittedDateStr = fb.ratingDate || fb.createdDate || fb.submittedDate || fb.feedbackDate;
+          let formattedSubmittedDate = '';
+          if (submittedDateStr) {
+            const d = new Date(submittedDateStr);
+            formattedSubmittedDate = !isNaN(d.getTime()) 
+              ? d.toLocaleDateString('en-GB') 
+              : submittedDateStr;
+          }
+
+          return (
+            <Card 
+              key={feedbackId} 
+              variant="outlined" 
+              sx={{ 
+                borderRadius: 4, 
+                borderColor: '#EFEFEF', 
+                boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+                bgcolor: '#FFFFFF',
+                p: 0.5
+              }}
+            >
+              <CardContent>
+                {/* APPOINTMENT HEADER */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1, gap: 2 }}>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem', color: '#111' }}>
+                      {displayTitle}{' '}
+                      <Typography component="span" variant="body1" sx={{ color: '#555', fontWeight: 500 }}>
+                        — Client: {clientName}
+                      </Typography>
+                    </Typography>
+
+                    <Typography variant="body2" sx={{ color: '#666', mt: 0.5 }}>
+                      Type:{' '}
+                      <Typography component="span" variant="body2" sx={{ fontWeight: 700, color: '#222' }}>
+                        {matchedApt.locationType || 'At Home Service (Doorstep)'}
+                      </Typography>
+                    </Typography>
+                  </Box>
+                </Box>
+
+                {/* META INFO (DATE/TIME & ADDRESS) */}
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={4} sx={{ my: 2, color: '#555' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <EventNoteIcon sx={{ fontSize: 18, color: '#1976D2' }} />
+                    <Typography variant="body2" sx={{ color: '#555', fontWeight: 500 }}>
+                      {formatDateTime(matchedApt)}
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <PlaceIcon sx={{ fontSize: 18, color: '#D32F2F' }} />
+                    <Typography variant="body2" sx={{ color: '#555', fontWeight: 500 }}>
+                      {addressText}
+                    </Typography>
+                  </Box>
+                </Stack>
+
+                <Divider sx={{ my: 2, borderColor: '#F0F0F0' }} />
+
+                {/* FEEDBACK & RATING ROW */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <Box sx={{ pr: 2 }}>
+                    <Typography 
+                      variant="body1" 
+                      sx={{ 
+                        fontStyle: 'italic', 
+                        color: '#333', 
+                        fontWeight: 500, 
+                        mb: 0.5 
+                      }}
+                    >
+                      "{reviewText}"
+                    </Typography>
+                    {formattedSubmittedDate && (
+                      <Typography variant="caption" sx={{ color: '#888' }}>
+                        Submitted: {formattedSubmittedDate}
+                      </Typography>
+                    )}
+                  </Box>
+
+                  <Rating 
+                    value={Number(ratingVal)} 
+                    readOnly 
+                    precision={0.5} 
+                    sx={{ color: '#8C2B4E' }} 
+                  />
+                </Box>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </Stack>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // RENDER PATH 2: STANDARD APPOINTMENTS LIST VIEW
+  // -------------------------------------------------------------
+  if (!appointments || appointments.length === 0) {
+    return (
+      <Paper elevation={0} sx={{ p: 4, textAlign: 'center', bgcolor: '#FDFBF7', borderRadius: 3, border: '1px solid #E0E0E0' }}>
+        <Typography variant="body1" color="text.secondary">
+          No appointment requests found.
+        </Typography>
+      </Paper>
+    );
+  }
+
   return (
     <Stack spacing={2.5}>
       {appointments.map((item, index) => {
@@ -166,17 +338,36 @@ export default function ExpertAppointmentList({
         const appointmentId = item.appointmentId || item.id || index;
         const badgeStyle = getBadgeStyle(statusKey);
 
-        // Address resolution supporting nested objects from EF Core
         const addressText = item.address?.addressLine1 
           || item.serviceAddress 
           || item.address 
           || 'Doorstep Address';
 
-        // Customer name resolution supporting EF Core Customer.UserProfile inclusion
         const clientName = item.customerName 
           || item.clientName 
           || `${item.customer?.userProfile?.firstName || ''} ${item.customer?.userProfile?.lastName || ''}`.trim()
           || 'Valued Client';
+
+        const matchedService = servicesList.find(
+          (srv) => srv.serviceCategoryId === item.serviceCategoryId || srv.id === item.serviceCategoryId
+        );
+
+        const serviceTitle = 
+          item.serviceCategoryName || 
+          item.serviceName || 
+          item.service || 
+          (matchedService ? matchedService.categoryName || matchedService.serviceName || matchedService.name : null);
+
+        const occasionTitle = item.occasion;
+
+        let displayTitle = 'Beauty Service';
+        if (serviceTitle && occasionTitle) {
+          displayTitle = `${serviceTitle} - ${occasionTitle}`;
+        } else if (serviceTitle) {
+          displayTitle = serviceTitle;
+        } else if (occasionTitle) {
+          displayTitle = occasionTitle;
+        }
 
         return (
           <Card 
@@ -195,7 +386,7 @@ export default function ExpertAppointmentList({
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1, gap: 2 }}>
                 <Box>
                   <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem', color: '#111' }}>
-                    {item.occasion || item.serviceName || 'Beauty Service'}{' '}
+                    {displayTitle}{' '}
                     <Typography component="span" variant="body1" sx={{ color: '#555', fontWeight: 500 }}>
                       — Client: {clientName}
                     </Typography>

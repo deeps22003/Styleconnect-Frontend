@@ -8,7 +8,7 @@ import {
   Tab, 
   Typography, 
   Alert, 
-  CircularProgress 
+  CircularProgress
 } from '@mui/material';
 
 import { 
@@ -18,6 +18,7 @@ import {
 
 import ProfileCard from '../components/appointments/ProfileCard';
 import ExpertAppointmentList from '../components/appointments/ExpertAppointmentList';
+import apiClient from '../services/apiClient';
 
 export default function ExpertDashboard() {
   const dispatch = useDispatch();
@@ -38,12 +39,39 @@ export default function ExpertDashboard() {
 
   const [activeTab, setActiveTab] = useState('requests');
 
+  // Feedback State Management
+  const [feedbacks, setFeedbacks] = useState([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackError, setFeedbackError] = useState(null);
+
+  // Fetch Appointments on mount
   useEffect(() => {
     if (expertId) {
       // Pass userType: 0 (0 = Expert, 1 = Customer) to match backend route /api/Appointments/{userType:int}/{userId:int}
       dispatch(fetchAppointmentsThunk({ userType: 0, userId: expertId }));
     }
   }, [dispatch, expertId]);
+
+  // Fetch Expert Feedbacks when active tab is changed to 'feedback'
+  useEffect(() => {
+    if (activeTab === 'feedback' && expertId) {
+      const fetchExpertFeedbacks = async () => {
+        try {
+          setFeedbackLoading(true);
+          setFeedbackError(null);
+          const data = await apiClient.getFeedbackRatingByExpertId(expertId);
+          setFeedbacks(data || []);
+        } catch (err) {
+          console.error('Failed to load feedback:', err);
+          setFeedbackError('Unable to load client feedback at this time.');
+        } finally {
+          setFeedbackLoading(false);
+        }
+      };
+
+      fetchExpertFeedbacks();
+    }
+  }, [activeTab, expertId]);
 
   // Handler for updating appointment status using integer IDs matching backend expectations
   const handleStatusChange = async (appointmentId, statusId) => {
@@ -142,8 +170,6 @@ export default function ExpertDashboard() {
               <ExpertAppointmentList 
                 appointments={appointments}
                 onStatusChange={handleStatusChange}
-                /* Map status actions to your backend Status IDs:
-                   1 = Pending, 2 = Confirmed, 3 = Cancelled/Declined, 4 = Completed */
                 onConfirm={(id) => handleStatusChange(id, 2)}
                 onDecline={(id) => handleStatusChange(id, 3)}
                 onComplete={(id) => handleStatusChange(id, 4)}
@@ -163,13 +189,31 @@ export default function ExpertDashboard() {
             <Typography 
               variant="h5" 
               component="h3" 
-              sx={{ fontFamily: 'Georgia, serif', fontWeight: 700, color: '#1A1A1A', mb: 2 }}
+              sx={{ fontFamily: 'Georgia, serif', fontWeight: 700, color: '#1A1A1A', mb: 3 }}
             >
               Client Feedback & Ratings
             </Typography>
-            <Typography color="text.secondary">
-              No feedback submitted yet.
-            </Typography>
+
+            {feedbackLoading && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 2 }}>
+                <CircularProgress size={24} sx={{ color: '#8C2B4E' }} />
+                <Typography color="text.secondary">Loading client feedback...</Typography>
+              </Box>
+            )}
+
+            {feedbackError && (
+              <Alert severity="error" sx={{ mb: 2, borderRadius: '12px' }}>
+                {feedbackError}
+              </Alert>
+            )}
+
+            {!feedbackLoading && !feedbackError && (
+              /* UPDATED: Delegate rendering to ExpertAppointmentList with feedbacks & appointments */
+              <ExpertAppointmentList 
+                appointments={appointments} 
+                feedbacks={feedbacks} 
+              />
+            )}
           </Card>
         )}
       </Container>

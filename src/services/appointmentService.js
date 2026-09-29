@@ -64,18 +64,19 @@ const parseResponse = async (response) => {
   return text ? JSON.parse(text) : {};
 };
 
-// Named Export: GET Customer/User Appointments
-export const getCustomerAppointments = async (userTypeOrId = 'Customer', userId = 1) => {
-  let userType = userTypeOrId;
-  let id = userId;
+// Named Export: GET Customer Appointments
+export const getCustomerAppointments = async (userId = 1) => {
+  const response = await fetch(`${BASE_URL}/Appointments/Customer/${userId}`, {
+    method: 'GET',
+    headers: getAuthHeaders()
+  });
 
-  // Polymorphic signature handling: pass just an ID -> getCustomerAppointments(5)
-  if (typeof userTypeOrId === 'number' || (!isNaN(userTypeOrId) && !isNaN(parseFloat(userTypeOrId)))) {
-    id = userTypeOrId;
-    userType = 'Customer';
-  }
+  return await parseResponse(response);
+};
 
-  const response = await fetch(`${BASE_URL}/Appointments/${userType}/${id}`, {
+// Named Export: GET Expert Appointments
+export const getExpertAppointments = async (expertId = 1) => {
+  const response = await fetch(`${BASE_URL}/Appointments/Expert/${expertId}`, {
     method: 'GET',
     headers: getAuthHeaders()
   });
@@ -94,8 +95,8 @@ export const createOrUpdateAppointment = async (bookingData) => {
   return await parseResponse(response);
 };
 
-// Named Export: PATCH Update Status
-export const updateStatus = async (appointmentId, status) => {
+// Named Export: PATCH Update Status (Aliased to match component imports)
+export const updateAppointmentStatus = async (appointmentId, status) => {
   const payload = typeof status === 'string' ? { status } : status;
 
   const response = await fetch(`${BASE_URL}/GetAppointmentStatus/${appointmentId}`, {
@@ -106,6 +107,9 @@ export const updateStatus = async (appointmentId, status) => {
 
   return await parseResponse(response);
 };
+
+// Alias export for backwards compatibility
+export const updateStatus = updateAppointmentStatus;
 
 // Named Export: PATCH Cancel Appointment
 export const cancelAppointment = async (appointmentId) => {
@@ -119,8 +123,10 @@ export const cancelAppointment = async (appointmentId) => {
 
 // Default Export Bundle
 export const appointmentService = {
-  fetchAppointments: getCustomerAppointments,
-  createAppointment: createOrUpdateAppointment,
+  getCustomerAppointments,
+  getExpertAppointments,
+  createOrUpdateAppointment,
+  updateAppointmentStatus,
   updateStatus,
   cancelAppointment
 };

@@ -1,4 +1,4 @@
- import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -8,22 +8,95 @@ import {
   Typography,
   TextField,
   Rating,
-  Button, 
+  Button,
   Box,
-  Stack
+  Stack,
+  CircularProgress,
+  Alert
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import StarIcon from '@mui/icons-material/Star';
+import apiClient from '../../services/apiClient';
 
-export default function FeedbackModal({ appointment, onClose, onSubmit }) {
-  const [rating, setRating] = useState(4);
-  const [review, setReview] = useState('');
+export default function FeedbackModal({ appointment, onClose, onSuccess }) {
+  const [ratingValue, setRatingValue] = useState(5);
+  const [comments, setComments] = useState('');
+  const [ratingId, setRatingId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [fetchingData, setFetchingData] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const isOpen = Boolean(appointment);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const syncOrFetchFeedback = async () => {
+      if (!appointment) return;
+
+      // 1. If appointment object already contains feedback properties, use them immediately
+      const existingId = appointment.ratingId || appointment.feedbackId;
+      const existingRating = appointment.ratingValue || appointment.rating;
+      const existingComments = appointment.comments || appointment.review;
+
+      if (existingId || existingRating || existingComments) {
+        setRatingValue(Number(existingRating || 5));
+        setComments(existingComments || '');
+        setRatingId(existingId || null);
+        return;
+      }
+
+      // 2. Otherwise, fetch from API only if appointment ID exists
+      const resolvedAppointmentId = parseInt(
+        appointment.appointmentId || appointment.id || appointment.appointmentID,
+        10
+      );
+
+      if (!resolvedAppointmentId || isNaN(resolvedAppointmentId)) return;
+
+      setFetchingData(true);
+      setErrorMessage('');
+
+      try {
+        const existingData = await apiClient.getFeedbackRatingByAppointmentId(resolvedAppointmentId);
+
+        if (isMounted) {
+          if (existingData) {
+            setRatingValue(Number(existingData.ratingValue ?? existingData.rating ?? 5));
+            setComments(existingData.comments || existingData.review || '');
+            setRatingId(existingData.ratingId || existingData.feedbackId || null);
+          } else {
+            // Default reset
+            setRatingValue(5);
+            setComments('');
+            setRatingId(null);
+          }
+        }
+      } catch (error) {
+        if (isMounted) {
+          setRatingValue(5);
+          setComments('');
+          setRatingId(null);
+        }
+      } finally {
+        if (isMounted) {
+          setFetchingData(false);
+        }
+      }
+    };
+
+    syncOrFetchFeedback();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [appointment]);
+
   const handleReset = () => {
-    setRating(4);
-    setReview('');
+    setRatingValue(5);
+    setComments('');
+    setRatingId(null);
+    setErrorMessage('');
   };
 
   const handleClose = () => {
@@ -31,16 +104,40 @@ export default function FeedbackModal({ appointment, onClose, onSubmit }) {
     if (onClose) onClose();
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (onSubmit && appointment) {
-      onSubmit({
-        appointmentId: appointment.appointmentId || appointment.id,
-        rating,
-        review,
-      });
+    if (!appointment) return;
+
+    const resolvedAppointmentId = parseInt(
+      appointment.appointmentId || appointment.id || appointment.appointmentID,
+      10
+    );
+
+    if (!resolvedAppointmentId || isNaN(resolvedAppointmentId)) {
+      setErrorMessage('Invalid Appointment ID. Cannot submit feedback.');
+      return;
     }
-    handleClose();
+
+    setLoading(true);
+    setErrorMessage('');
+
+    const payload = {
+      ratingId: ratingId ? parseInt(ratingId, 10) : 0,
+      appointmentId: resolvedAppointmentId,
+      ratingValue: parseInt(ratingValue, 10),
+      comments: comments.trim()
+    };
+
+    try {
+      await apiClient.createOrUpdateFeedbackRating(payload);
+      handleClose();
+      if (onSuccess) onSuccess();
+    } catch (error) {
+      const serverMsg = error.response?.data?.message || error.response?.data || error.message;
+      setErrorMessage(typeof serverMsg === 'string' ? serverMsg : 'Failed to submit feedback.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fieldStyle = {
@@ -71,7 +168,6 @@ export default function FeedbackModal({ appointment, onClose, onSubmit }) {
         }
       }}
     >
-      {/* HEADER */}
       <DialogTitle 
         component="div" 
         sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', pb: 1 }}
@@ -82,66 +178,73 @@ export default function FeedbackModal({ appointment, onClose, onSubmit }) {
             component="span" 
             sx={{ fontFamily: 'Georgia, serif', fontWeight: 700, color: '#1A1A1A', display: 'block' }}
           >
-            Leave Feedback & Rating
+            {ratingId ? 'Update Feedback & Rating' : 'Leave Feedback & Rating'}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
             How was your experience with the expert?
           </Typography>
         </Box>
-        <IconButton autoFocus onClick={handleClose} size="small" aria-label="close">
+        <IconButton onClick={handleClose} size="small" aria-label="close">
           <CloseIcon />
         </IconButton>
       </DialogTitle>
 
       <form onSubmit={handleSubmit}>
-        {/* FORM BODY */}
-        <DialogContent dividers sx={{ borderColor: '#F0E6E1' }}>
-          <Stack spacing={3}>
-            {/* RATING SECTION */}
-            <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#1A1A1A' }}>
-                Rating
-              </Typography>
-              <Rating
-                name="appointment-rating"
-                value={rating}
-                onChange={(event, newValue) => {
-                  if (newValue !== null) {
-                    setRating(newValue);
-                  }
-                }}
-                size="large"
-                sx={{ color: '#8C2B4E' }}
-                emptyIcon={<StarIcon style={{ opacity: 0.3 }} fontSize="inherit" />}
-              />
+        <DialogContent dividers sx={{ borderColor: '#F0E6E1', position: 'relative', minHeight: 180 }}>
+          {fetchingData ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+              <CircularProgress size={32} sx={{ color: '#8C2B4E' }} />
             </Box>
+          ) : (
+            <Stack spacing={3}>
+              {errorMessage && (
+                <Alert severity="error" sx={{ borderRadius: '12px' }}>
+                  {errorMessage}
+                </Alert>
+              )}
 
-            {/* REVIEW SECTION */}
-            <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#1A1A1A' }}>
-                Your Review
-              </Typography>
-              <TextField
-                fullWidth
-                multiline
-                rows={4}
-                placeholder="Share details about punctuality, quality, and expertise..."
-                value={review}
-                onChange={(e) => setReview(e.target.value)}
-                variant="outlined"
-                sx={fieldStyle}
-              />
-            </Box>
-          </Stack>
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#1A1A1A' }}>
+                  Rating
+                </Typography>
+                <Rating
+                  name="appointment-rating"
+                  value={ratingValue}
+                  onChange={(event, newValue) => {
+                    if (newValue !== null) setRatingValue(newValue);
+                  }}
+                  size="large"
+                  sx={{ color: '#8C2B4E' }}
+                  emptyIcon={<StarIcon style={{ opacity: 0.3 }} fontSize="inherit" />}
+                />
+              </Box>
+
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#1A1A1A' }}>
+                  Your Review
+                </Typography>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={4}
+                  placeholder="Share details about punctuality, quality, and expertise..."
+                  value={comments}
+                  onChange={(e) => setComments(e.target.value)}
+                  variant="outlined"
+                  sx={fieldStyle}
+                />
+              </Box>
+            </Stack>
+          )}
         </DialogContent>
 
-        {/* SUBMIT ACTION */}
         <DialogActions sx={{ p: 2 }}>
           <Button
             type="submit"
             variant="contained"
             fullWidth
             size="large"
+            disabled={loading || fetchingData}
             sx={{
               backgroundColor: '#8C2B4E',
               '&:hover': { backgroundColor: '#70223E' },
@@ -152,7 +255,7 @@ export default function FeedbackModal({ appointment, onClose, onSubmit }) {
               fontSize: '1rem'
             }}
           >
-            Submit Feedback
+            {loading ? <CircularProgress size={24} color="inherit" /> : (ratingId ? 'Update Feedback' : 'Submit Feedback')}
           </Button>
         </DialogActions>
       </form>
