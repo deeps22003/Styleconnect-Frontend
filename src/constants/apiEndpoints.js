@@ -7,6 +7,7 @@ const API_ENDPOINTS = {
     SEND_PASSWORD_RESET_OTP: "/api/Auth/send-reset-otp",
     VERIFY_PASSWORD_RESET_OTP: "/api/Auth/verify-reset-otp",
     RESET_USER_PASSWORD: "/api/Auth/reset-password",
+    
   },
 
   CATEGORY: {
@@ -45,6 +46,17 @@ const API_ENDPOINTS = {
     REMOVE_SAVED_EXPERT: (savedExpertId) =>
       `/api/SavedExperts/${savedExpertId}`,
   },
+  EXPERTS:{
+    GET_ALLEXPERTS:"/api/Experts",
+    GET_EXPERT_BY_ID:(expertId)=>`/api/Experts/${expertId}`
+  },
+  LOCATION:{
+    GET_STATES:"/api/Locations/states",
+    GET_DISTRICTS_BY_STATEID:(stateId)=> `/api/Locations/states/${stateId}/districts`,
+    GET_CITIES_BY_DISTRICTID:(districtId)=>`/api/Locations/districts/${districtId}/cities`,
+    GET_AREAS_BY_CITYID:(cityId)=>`/api/Locations/cities/${cityId}/areas`,
+    CREATE_ADDRESS:"/api/Address"
+  }
 };
 
 export default API_ENDPOINTS;

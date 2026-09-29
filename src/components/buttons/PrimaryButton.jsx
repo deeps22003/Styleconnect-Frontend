@@ -12,7 +12,7 @@ export const PrimaryButton=({children,onClick,disabled=false,type="button"})=>{
             minHeight:"48px",
             fontWeight:600,
             "&:hover":{
-                backgroundColor:"var(--sc-rose-dark)"
+                backgroundColor:"var(--sc-rose-deep)"
             }
         }}
         >
