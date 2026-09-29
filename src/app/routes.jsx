@@ -1,45 +1,74 @@
-import {BrowserRouter,Routes,Route} from "react-router-dom";
+import React from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { RegisterPage } from "../features/auth/RegisterPage";
 import { CustomerRegistration } from "../features/auth/CustomerRegistration";
 import { ExpertRegistration } from "../features/auth/ExpertRegistration";
-import { LoginPage } from "../features/auth/LoginPage";
-import ROUTES from "../routes/routePaths";
-import { ProtectedRoute } from "../routes/ProtectedRoute";
-import { CustomerDashboard } from "../features/users/CustomerDashboard";
-import { SessionManager } from "../components/session/SessionManager"
-// import { isAuthenticated } from "../utils/authStorage";
-export const AppRoutes=()=>{
-    return(
-        <BrowserRouter>
-            <SessionManager /> 
-            <Routes>
-                {/*Public routes*/}
-                <Route path={ROUTES.HOME} element={<h1>StyleConnect Home</h1>} />
-               <Route path={ROUTES.REGISTER} element={<RegisterPage/>}/>
-               <Route path={ROUTES.CUSTOMER_REGISTER} element={<CustomerRegistration/>} />
-               <Route path={ROUTES.EXPERT_REGISTER} element={<ExpertRegistration/>} />
-               <Route path={ROUTES.LOGIN} element={<LoginPage/>}/>
+import CustomerDashboard from "../pages/CustomerDashboard";
+import ExpertDashboard from "../pages/ExpertDashboard";
 
-               {/* Protected Routes*/}
-               <Route
-                path={ROUTES.CUSTOMER_DASHBOARD}
-                element={<ProtectedRoute allowedRoles={[1]}>
-                    <CustomerDashboard/>
-                </ProtectedRoute>}
-                />
+// Role-Based Router Component
+const RoleBasedDashboard = () => {
+  const savedUser = localStorage.getItem("user");
+  const user = savedUser ? JSON.parse(savedUser) : null;
 
-                {/* <Route
-                path={ROUTES.CUSTOMER_DASHBOARD}
-                element={<CustomerDashboard/>}
-                /> */}
+  // Strict role check
+  if (user?.role === "Expert") {
+    return <ExpertDashboard />;
+  }
 
-                {/* <Route
-                path={ROUTES.EXPERT_DASHBOARD}
-                element={<ExpertDashboard />}
-                /> */}
+  if (user?.role === "Customer") {
+    return <CustomerDashboard />;
+  }
 
+  // If no user/role is found, redirect to registration
+  return <Navigate to="/register" replace />;
+};
 
-            </Routes>
-        </BrowserRouter>
-    )
-}
+// Protected Route Wrapper for Specific Path Access
+const ProtectedRoute = ({ allowedRole, children }) => {
+  const savedUser = localStorage.getItem("user");
+  const user = savedUser ? JSON.parse(savedUser) : null;
+
+  if (!user || user.role !== allowedRole) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+};
+
+export const AppRoutes = () => {
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Dynamic Root Route based strictly on Role */}
+        <Route path="/" element={<RoleBasedDashboard />} />
+
+        {/* Role-Protected Explicit Dashboard Routes */}
+        <Route
+          path="/customer-dashboard"
+          element={
+            <ProtectedRoute allowedRole="Customer">
+              <CustomerDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/expert-dashboard"
+          element={
+            <ProtectedRoute allowedRole="Expert">
+              <ExpertDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Auth Routes */}
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/register/customer" element={<CustomerRegistration />} />
+        <Route path="/register/expert" element={<ExpertRegistration />} />
+
+        {/* Catch-all Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
+};
