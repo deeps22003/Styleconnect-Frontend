@@ -5,7 +5,8 @@ export const RegistrationLayout=({children})=>{
               sx={{
                 minHeight: "100vh",
                 backgroundColor: "var(--sc-cream)",
-                padding: "24px"
+                // padding: "24px"
+                width:"100%"
               }}
         >
         {children}

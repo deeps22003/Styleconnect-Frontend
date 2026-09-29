@@ -21,6 +21,8 @@
 
     --sc-danger: #B42318;
 
+    
+
      /* ================================
        BORDERS
        ================================ */
@@ -91,4 +93,21 @@
     --z-sticky: 200;
     --z-modal: 1000;
 
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+    width: 100%;
+    min-height: 100%;
+}
+
+body {
+    margin: 0;
 }

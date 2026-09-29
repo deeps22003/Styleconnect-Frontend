@@ -1,65 +1,85 @@
-// features/auth/data/customerFields.js
+import {
+  validateFirstName,
+  validateLastName,
+  validateDOB,
+  validateGender,
+  validateAddressLine,
+  validateState,
+  validateDistrict,
+  validateCity,
+  validateArea,
+} from "../../helpers/validationHelpers";
 
 export const customerFields = [
   {
     type: "text",
     label: "First Name",
     name: "firstName",
-    placeholder: "Enter Your First Name"
+    placeholder: "Enter Your First Name",
+    validate: validateFirstName,
   },
   {
     type: "text",
     label: "Last Name",
     name: "lastName",
-    placeholder: "Enter Your Last Name"
+    placeholder: "Enter Your Last Name",
+    validate: validateLastName,
   },
   {
     type: "date",
     label: "Date of Birth",
-    name: "dob"
+    name: "dob",
+    validate: validateDOB,
   },
   {
     type: "select",
     label: "Gender",
     name: "gender",
     placeholder: "Select Gender",
+    validate: validateGender,
     options: [
       { value: "male", label: "Male" },
       { value: "female", label: "Female" },
-      { value: "", label: "Prefer not to say" }
-    ]
+      { value: "", label: "Prefer not to say" },
+    ],
   },
   {
     type: "text",
     label: "Address Line 1",
     name: "addressLine1",
-    placeholder: "House No/Flat No, Building Name, Street Name"
+    placeholder:
+      "House No/Flat No, Building Name, Street Name",
+    validate: validateAddressLine,
   },
   {
     type: "select",
     label: "State",
     name: "stateId",
-    placeholder: "Select State"
+    placeholder: "Select State",
+    validate: validateState,
   },
   {
     type: "select",
     label: "District",
     name: "districtId",
-    placeholder: "Select District"
+    placeholder: "Select District",
+    validate: validateDistrict,
   },
   {
     type: "select",
     label: "City",
     name: "cityId",
-    placeholder: "Select City"
+    placeholder: "Select City",
+    validate: validateCity,
   },
   {
     type: "select",
     label: "Area",
     name: "areaId",
-    placeholder: "Select Area"
+    placeholder: "Select Area",
+    validate: validateArea,
   },
-  {
+   {
     type: "number",
     label: "Budget",
     name: "budget",

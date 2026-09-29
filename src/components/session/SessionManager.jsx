@@ -33,6 +33,8 @@ export const SessionManager = () => {
     ROUTES.REGISTER,
     ROUTES.CUSTOMER_REGISTER,
     ROUTES.EXPERT_REGISTER,
+    ROUTES.HOME,
+    ROUTES.EXPERT_LANDING
   ];
 
   const clearAllTimers = () => {

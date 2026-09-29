@@ -1,40 +1,32 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Box, Grid } from "@mui/material";
+import { Grid,Typography } from "@mui/material";
+import { useDispatch, useSelector } from "react-redux";
 
 import { FormTextField } from "../../components/form/FormTextField";
 import { FormSelect } from "../../components/form/FormSelect";
 import { FormCheckboxGroup } from "../../components/form/FormCheckBoxGroup";
 
-import { RegistrationNavbar } from "../../components/navigation/RegistrationNavbar";
 import { RegistrationHeader } from "../../components/headers/RegistrationHeader";
 
 import { expertFields } from "../data/expertFields";
 
-import {
-  states,
-  districts,
-  cities,
-  areas
-} from "../../mocks/address/locationData";
-
-import { filterByParentId } from "../../helpers/locationHelpers";
 import { RegistrationLayout } from "../../components/layout/RegistrationLayout";
 import { FormCard } from "../../components/layout/FormCard";
 import { FormProgress } from "../../components/form/FormProgress";
 import { PrimaryButton } from "../../components/buttons/PrimaryButton";
-import { registerExpert } from "../../services/expertService";
 
-const services = [
-  "Bridal Makeup",
-  "Hair Styling",
-  "Mehendi",
-  "Nail Art",
-  "Saree Draping",
-  "Party Makeup",
-  "Skin Care",
-  "Men's Grooming"
-];
+import { registerUser } from "../../services/authService";
+
+import { fetchCategories } from "../slices/categorySlice";
+
+import { fetchStates,fetchAreasByCity,fetchCitiesByDistrict,fetchDistrictsByState,
+  clearAreas,clearCities } from "../slices/loactionSlice";
+import { createAddress } from "../../services/locationService";
+
+import { Navbar } from "../../components/landing/Navbar";
+import { fetchRoles } from "../slices/roleSlice";
+import { validateFields } from "../../helpers/formValidator";
 
 const expertData = {
   firstName: "",
@@ -48,121 +40,296 @@ const expertData = {
   areaId: "",
   hourlyCharges: "",
   experience: "",
-  services: []
+  services: [],
 };
 
 export const ExpertRegistration = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+
   const credentials = location.state || {};
 
   const [expert, setExpert] = useState(expertData);
+  const [errors, setErrors] = useState({});
 
-  const navigate = useNavigate();
+  const { categories } = useSelector(
+    (state) => state.categories || state.serviceCategory
+  );
 
-  const handleBack = () => {
-    navigate(-1);
-  };
+  const {
+    states,
+    districts,
+    cities,
+    areas,
+  } = useSelector((state) => state.location);
+  const {roles}=useSelector((state)=>state.roles);
 
+  useEffect(() => {
+    dispatch(fetchCategories());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (states.length === 0) {
+      dispatch(fetchStates());
+    }
+  }, [dispatch, states.length]);
+
+  useEffect(()=>{
+    if(roles.length===0){
+      dispatch(fetchRoles());
+    }
+  },[dispatch,roles.length]);
+
+  // handling input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
 
     setExpert((prev) => ({
       ...prev,
-      [name]:value
+     [name]: value,
+    }));
+
+     setErrors((prev) => ({
+      ...prev,
+      [name]:"",
     }));
   };
 
   const hierarchy = {
     stateId: ["districtId", "cityId", "areaId"],
     districtId: ["cityId", "areaId"],
-    cityId: ["areaId"]
+    cityId: ["areaId"],
   };
+
+  // handling address changes
 
   const handleAddressChange = (e) => {
-    const { name, value } = e.target;
+  const { name, value } = e.target;
 
-    setExpert((prev) => {
-      const updated = {
-        ...prev,
-       [name]: value
-      };
-
-      hierarchy[name]?.forEach((field) => {
-        updated[field] = "";
-      });
-
-      return updated;
-    });
-  };
-
-  const handleServiceChange = (e) => {
-    const { value, checked } = e.target;
-
-    setExpert((prev) => ({
+  setExpert((prev) => {
+    const updated = {
       ...prev,
-      services: checked
-        ? [...prev.services, value]
-        : prev.services.filter(
-          (service) => service !== value
-        )
-    }));
-  };
+      [name]:value,
+    };
 
-  const handleSubmit = async() => {
-      const payload = {
-        ...credentials,
-        ...customer
-      };
+    hierarchy[name]?.forEach((field) => {
+      updated[field] = "";
+    });
 
-      await registerExpert(payload)
+    return updated;
+  });
+
+  setErrors((prev) => ({
+    ...prev,
+   [name]: "",
+  }));
+
+  if (name === "stateId") {
+    dispatch(fetchDistrictsByState(value));
+
+    dispatch(clearCities());
+    dispatch(clearAreas());
+  } else if (name === "districtId") {
+    dispatch(fetchCitiesByDistrict(value));
+
+    dispatch(clearAreas());
+  } else if (name === "cityId") {
+    dispatch(fetchAreasByCity(value));
+  }
 };
 
-  const filteredDistricts = filterByParentId(
-    districts,
-    "stateId",
-    expert.stateId
+  const handleServiceChange = (e) => {
+        const { value, checked } = e.target;
+
+        const categoryId = Number(value);
+
+        setExpert((prev) => ({
+          ...prev,
+          services: checked
+            ? [...prev.services, categoryId]
+            : prev.services.filter(
+                (id) => id !== categoryId
+              ),
+        }));
+
+        setErrors((prev) => ({
+          ...prev,
+          services: "",
+        }));
+    };
+
+  const handleSubmit = async () => {
+    const validationErrors = validateFields(
+      expertFields,
+      expert
+    );
+
+    validationErrors.services =
+      !expert.services.length
+        ? "Select at least one service"
+    : "";
+
+    setErrors(validationErrors);
+
+    const hasErrors =
+      Object.values(validationErrors).some(
+        Boolean
+      );
+
+    if (hasErrors) {
+      return;
+    }
+
+  try {
+    const addressResponse =
+      await createAddress({
+        areaId: Number(expert.areaId),
+        addressLine: expert.addressLine1,
+      });
+
+    const expertRole = roles.find(
+      (role) => role.roleName === "Expert"
+    );
+
+    const payload = {
+      user: {
+        email: credentials.email,
+        phoneNumber: credentials.phone,
+        password: credentials.password,
+        roleId: expertRole?.roleId,
+      },
+
+      userProfile: {
+        firstName: expert.firstName,
+        lastName: expert.lastName,
+        gender: expert.gender,
+        dateOfBirth: expert.dob,
+
+        addressId:
+          addressResponse.addressId,
+
+        profileImage: "",
+      },
+
+      expert: {
+        hourlyCharges: Number(
+          expert.hourlyCharges
+        ),
+
+        experience: Number(
+          expert.experience
+        ),
+
+        serviceCategoryIds:
+          expert.services,
+      },
+
+      customer: null,
+    };
+
+    const response =
+      await registerUser(payload);
+
+    console.log(
+      "Registration Successful"
+    );
+
+    console.log(response);
+
+  } catch (error) {
+    console.error(
+      "Full Error:",
+      error
+    );
+
+    console.log(
+      "Response Data:",
+      error.response?.data
+    );
+
+    console.log(
+      "Status:",
+      error.response?.status
+    );
+  }
+};
+  const stateOptions = states.map(
+    (state) => ({
+      value: state.stateId,
+      label: state.stateName,
+    })
   );
 
-  const filteredCities = filterByParentId(
-    cities,
-    "districtId",
-    expert.districtId
+  const districtOptions = districts.map(
+    (district) => ({
+      value: district.districtId,
+      label: district.districtName,
+    })
   );
 
-  const filteredAreas = filterByParentId(
-    areas,
-    "cityId",
-    expert.cityId
+  const cityOptions = cities.map(
+    (city) => ({
+      value: city.cityId,
+      label: city.cityName,
+    })
+  );
+
+  const areaOptions = areas.map(
+    (area) => ({
+      value: area.areaId,
+      label: area.areaName,
+    })
   );
 
   const selectConfig = {
     stateId: {
-      options: states,
-      onChange: handleAddressChange
+      options: stateOptions,
+      onChange: handleAddressChange,
     },
 
     districtId: {
-      options: filteredDistricts,
-      onChange: handleAddressChange
+      options: districtOptions,
+      onChange: handleAddressChange,
     },
 
     cityId: {
-      options: filteredCities,
-      onChange: handleAddressChange
+      options: cityOptions,
+      onChange: handleAddressChange,
     },
 
     areaId: {
-      options: filteredAreas,
-      onChange: handleAddressChange
-    }
+      options: areaOptions,
+      onChange: handleAddressChange,
+    },
   };
+
+  const serviceOptions =
+    categories?.map((category) => ({
+      id:
+        category.serviceCategoryId ||
+        category.id,
+
+      name:
+        category.categoryName ||
+        category.name,
+    })) || [];
 
   return (
     <RegistrationLayout>
-      <RegistrationNavbar onBack={handleBack} />
+      <Navbar
+        logo="StyleConnect"
+        showNavigation={false}
+        showBackButton={true}
+        showAuthActions={false}
+      />
 
       <FormCard>
-         <FormProgress step={2} totalSteps={2} /> 
+        <FormProgress
+          step={2}
+          totalSteps={2}
+        />
+
         <RegistrationHeader
           heading="Build your expert profile"
           caption="Clients discover you based on this information — make it shine."
@@ -174,33 +341,58 @@ export const ExpertRegistration = () => {
               key={field.name}
               size={{
                 xs: 12,
-                sm: field.name === "addressLine1" ? 12 : 6
+                sm:
+                  field.name ===
+                  "addressLine1"
+                    ? 12
+                    : 6,
               }}
             >
-              {field.type === "select" ? (
+              {field.type ===
+              "select" ? (
                 <FormSelect
                   label={field.label}
                   name={field.name}
-                  value={expert[field.name]}
+                  value={
+                    expert[field.name]
+                  }
                   onChange={
-                    selectConfig[field.name]?.onChange ||
+                    selectConfig[
+                      field.name
+                    ]?.onChange ||
                     handleChange
                   }
                   options={
-                    selectConfig[field.name]?.options ||
+                    selectConfig[
+                      field.name
+                    ]?.options ||
                     field.options ||
                     []
                   }
-                  placeholder={field.placeholder}
+                  placeholder={
+                    field.placeholder
+                  }
+                  error={!!errors[field.name]}
+                  helperText={
+                    errors[field.name]
+                  }
                 />
               ) : (
                 <FormTextField
                   label={field.label}
                   name={field.name}
                   type={field.type}
-                  value={expert[field.name]}
-                  onChange={handleChange}
-                  placeholder={field.placeholder}
+                  value={
+                    expert[field.name]
+                  }
+                  onChange={
+                    handleChange
+                  }
+                  placeholder={
+                    field.placeholder
+                  }
+                  error={!!errors[field.name]}
+                  helperText={errors[field.name]}
                 />
               )}
             </Grid>
@@ -209,17 +401,26 @@ export const ExpertRegistration = () => {
 
         <FormCheckboxGroup
           label="Services You Offer"
-          options={services}
+          options={serviceOptions}
           values={expert.services}
           onChange={handleServiceChange}
         />
 
-        <PrimaryButton 
-            type="submit"
-            onClick={handleSubmit}
+        {errors.services && (
+          <Typography
+            color="error"
+            variant="caption"
+          >
+            {errors.services}
+          </Typography>
+        )}
+
+        <PrimaryButton
+          type="button"
+          onClick={handleSubmit}
         >
-            Complete Registration
-          </PrimaryButton> 
+          Complete Registration
+        </PrimaryButton>
       </FormCard>
     </RegistrationLayout>
   );

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState,useEffect } from "react";
+import { useDispatch,useSelector } from "react-redux";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Box, Grid } from "@mui/material";
 
@@ -8,16 +9,20 @@ import { RegistrationNavbar } from "../../components/navigation/RegistrationNavb
 import { RegistrationHeader } from "../../components/headers/RegistrationHeader";
 
 import { customerFields } from "../data/customerFields";
-
-import { states, districts, cities, areas } from "../../mocks/address/locationData";
-
-import { filterByParentId } from "../../helpers/locationHelpers";
 import { RegistrationLayout } from "../../components/layout/RegistrationLayout";
 import { FormCard } from "../../components/layout/FormCard";
 import { PrimaryButton } from "../../components/buttons/PrimaryButton";
 import { FormProgress } from "../../components/form/FormProgress";
-import { registerCustomer } from "../../services/customerService";
 import { registerUser } from "../../services/authService";
+import { Navbar } from "../../components/landing/Navbar";
+
+import { fetchStates,fetchAreasByCity,fetchCitiesByDistrict,fetchDistrictsByState } from "../slices/loactionSlice";
+import { clearAreas,clearCities } from "../slices/loactionSlice";
+import { createAddress } from "../../services/locationService";
+import { fetchRoles } from "../slices/roleSlice";
+import { validateFields } from "../../helpers/formValidator";
+
+
 
 const customerData = {
   firstName: "",
@@ -35,14 +40,28 @@ const customerData = {
 export const CustomerRegistration = () => {
   const location = useLocation();
   const credentials = location.state || {};
-
   const [customer, setCustomer] = useState(customerData);
-
+  const dispatch=useDispatch();
+  const {states,districts,cities,areas}=useSelector((state)=>state.location);
+  const {roles}=useSelector((state)=>state.roles);
   const navigate = useNavigate();
+  const [errors, setErrors] = useState({});
 
   const handleBack = () => {
     navigate(-1);
   };
+
+  useEffect(() => {
+  if (states.length === 0) {
+    dispatch(fetchStates());
+  }
+}, [dispatch, states.length]);
+
+useEffect(()=>{
+  if(roles.length===0){
+    dispatch(fetchRoles());
+  }
+},[dispatch,roles.length]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -50,6 +69,11 @@ export const CustomerRegistration = () => {
     setCustomer((prev) => ({
       ...prev,
       [name]:value,
+    }));
+
+    setErrors((prev) => ({
+      ...prev,
+      [name]:"",
     }));
   };
 
@@ -59,52 +83,107 @@ export const CustomerRegistration = () => {
     cityId: ["areaId"],
   };
 
-  const handleAddressChange = (e) => {
-    const { name, value } = e.target;
+ const handleAddressChange =  (e) => {
+  const { name, value } = e.target;
 
-    setCustomer((prev) => {
-      const updated = {
-        ...prev,
-        [name]:value,
-      };
+  setCustomer((prev) => {
+    const updated = {
+      ...prev,
+      [name]:value,
+    };
 
-      hierarchy[name]?.forEach((field) => {
-        updated[field] = "";
-      });
-
-      return updated;
+    hierarchy[name]?.forEach((field) => {
+      updated[field] = "";
     });
-  };
+
+    return updated;
+  });
+
+  setErrors((prev) => ({
+    ...prev,
+   [name]: "",
+  }));
+
+  if (name === "stateId") {
+    dispatch(fetchDistrictsByState(value));
+
+    dispatch(clearCities());
+    dispatch(clearAreas());
+  }
+
+  if (name === "districtId") {
+    dispatch(fetchCitiesByDistrict(value));
+
+    dispatch(clearAreas());
+  }
+
+  if (name === "cityId") {
+    dispatch(fetchAreasByCity(value));
+  }
+};
 
   const handleSubmit = async () => {
-  const payload = {
-    user: {
-      email: credentials.email,
-      phoneNumber: credentials.phone,
-      password: credentials.password,
-      roleId: 1,
-    },
+  const validationErrors = validateFields(
+    customerFields,
+    customer
+  );
 
-    userProfile: {
-      firstName: customer.firstName,
-      lastName: customer.lastName,
-      gender: customer.gender,
-      dateOfBirth: customer.dob,
+  setErrors(validationErrors);
 
-      // Temporary
-      addressId: 2,
+  const isValid = !Object.values(
+    validationErrors
+  ).some(Boolean);
 
-      profileImage: "",
-    },
-
-    customer: {
-      budget: Number(customer.budget),
-    },
-
-    expert: null,
-  };
+  if (!isValid) {
+    return;
+  }
 
   try {
+    const addressResponse =
+      await createAddress({
+        areaId: Number(customer.areaId),
+        addressLine:
+          customer.addressLine1,
+      });
+
+    const customerRole = roles.find(
+      (role) =>
+        role.roleName === "Customer"
+    );
+
+    const payload = {
+      user: {
+        email: credentials.email,
+        phoneNumber:
+          credentials.phone,
+        password:
+          credentials.password,
+        roleId:
+          customerRole?.roleId,
+      },
+
+      userProfile: {
+        firstName:
+          customer.firstName,
+        lastName:
+          customer.lastName,
+        gender: customer.gender,
+        dateOfBirth:
+          customer.dob,
+        addressId:
+          addressResponse.addressId,
+        profileImage: "",
+      },
+
+      customer: {
+        budget: Number(
+          customer.budget
+        ),
+      },
+
+      expert: null,
+    };
+
     const response =
       await registerUser(payload);
 
@@ -114,63 +193,78 @@ export const CustomerRegistration = () => {
 
     console.log(response);
   } catch (error) {
-  console.error("Full Error:", error);
+    console.error(
+      "Full Error:",
+      error
+    );
 
-  console.log(
-    "Response Data:",
-    error.response?.data
-  );
+    console.log(
+      "Response Data:",
+      error.response?.data
+    );
 
-  console.log(
-    "Status:",
-    error.response?.status
-  );
-}
+    console.log(
+      "Status:",
+      error.response?.status
+    );
+  }
 };
 
-  const filteredDistricts = filterByParentId(
-    districts,
-    "stateId",
-    customer.stateId
-  );
+  
 
-  const filteredCities = filterByParentId(
-    cities,
-    "districtId",
-    customer.districtId
-  );
+ 
+  const stateOptions = states.map(
+  (state) => ({
+    value: state.stateId,
+    label: state.stateName,
+  })
+);
 
-  const filteredAreas = filterByParentId(
-    areas,
-    "cityId",
-    customer.cityId
-  );
+  const districtOptions=districts.map((district)=>({
+    value:district.districtId,
+    label:district.districtName,
+  }));
+
+   const cityOptions=cities.map((city)=>({
+    value:city.cityId,
+    label:city.cityName,
+  }));
+
+   const areaOptions=areas.map((area)=>({
+    value:area.areaId,
+    label:area.areaName,
+  }));
 
   const selectConfig = {
     stateId: {
-      options: states,
+      options: stateOptions,
       onChange: handleAddressChange,
     },
 
     districtId: {
-      options: filteredDistricts,
+      options: districtOptions,
       onChange: handleAddressChange,
     },
 
     cityId: {
-      options: filteredCities,
+      options: cityOptions,
       onChange: handleAddressChange,
     },
 
     areaId: {
-      options: filteredAreas,
+      options: areaOptions,
       onChange: handleAddressChange,
     },
   };
 
   return (
     <RegistrationLayout>
-      <RegistrationNavbar onBack={handleBack} />
+       <Navbar
+              logo="StyleConnect"
+              showNavigation={false}
+              showBackButton={true}
+              showAuthActions={false}
+              />
 
       <FormCard>
          <FormProgress step={2} totalSteps={2} />
@@ -195,15 +289,20 @@ export const CustomerRegistration = () => {
                   name={field.name}
                   value={customer[field.name]}
                   onChange={
-                    selectConfig[field.name]?.onChange ||
-                    handleChange
+                    selectConfig[field.name]
+                      ?.onChange || handleChange
                   }
                   options={
-                    selectConfig[field.name]?.options ||
+                    selectConfig[field.name]
+                      ?.options ||
                     field.options ||
                     []
                   }
                   placeholder={field.placeholder}
+                  error={!!errors[field.name]}
+                  helperText={
+                    errors[field.name]
+                  }
                 />
               ) : (
                 <FormTextField
@@ -213,6 +312,8 @@ export const CustomerRegistration = () => {
                   value={customer[field.name]}
                   onChange={handleChange}
                   placeholder={field.placeholder}
+                  error={!!errors[field.name]}
+                  helperText={errors[field.name]}
                 />
               )}
             </Grid>
