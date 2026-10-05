@@ -1,7 +1,7 @@
 import API_ENDPOINTS from "../constants/apiEndpoints";
 import apiClient from "./apiClient";
  
-export const getAppointmentsByUserTypeAndId = async (userType, userId) => {
+export const getAppointments = async (userType, userId) => {
   try {
     const response = await apiClient.get(
       API_ENDPOINTS.APPOINTMENTS.GET_USER_APPOINTMENTS(
@@ -74,4 +74,3 @@ export const cancelAppointment = async (appointmentId) => {
     throw error;
   }
 };
- 

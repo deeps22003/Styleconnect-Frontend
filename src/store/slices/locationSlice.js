@@ -19,7 +19,7 @@ export const fetchStates = createAsyncThunk(
         "Request failed"
     );
 }
- 
+
   }
 );
  
@@ -35,7 +35,7 @@ export const fetchDistrictsByState = createAsyncThunk(
         "Request failed"
     );
 }
- 
+
   }
 );
  
@@ -51,7 +51,7 @@ export const fetchCitiesByDistrict = createAsyncThunk(
         "Request failed"
     );
 }
- 
+
   }
 );
  
@@ -67,7 +67,7 @@ export const fetchAreasByCity = createAsyncThunk(
         "Request failed"
     );
 }
- 
+
   }
 );
  

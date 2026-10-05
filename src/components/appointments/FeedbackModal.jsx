@@ -16,10 +16,10 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import StarIcon from '@mui/icons-material/Star';
-import { getFeedbackRatingByAppointmentId, createOrUpdateFeedbackRating } from '../../services/feedbackService';
+import { getFeedbackRatingByAppointmentId,createOrUpdateFeedbackRating } from '../../services/feedbackService';
 
 export default function FeedbackModal({ appointment, onClose, onSuccess }) {
-  const [ratingValue, setRatingValue] = useState(5);
+  const [ratingValue, setRatingValue] = useState(null);
   const [comments, setComments] = useState('');
   const [ratingId, setRatingId] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -40,7 +40,7 @@ export default function FeedbackModal({ appointment, onClose, onSuccess }) {
       const existingComments = appointment.comments || appointment.review;
 
       if (existingId || existingRating || existingComments) {
-        setRatingValue(Number(existingRating || 5));
+        setRatingValue(Number(existingRating || null));
         setComments(existingComments || '');
         setRatingId(existingId || null);
         return;
@@ -62,19 +62,19 @@ export default function FeedbackModal({ appointment, onClose, onSuccess }) {
 
         if (isMounted) {
           if (existingData) {
-            setRatingValue(Number(existingData.ratingValue ?? existingData.rating ?? 5));
+            setRatingValue(Number(existingData.ratingValue ?? existingData.rating ?? null));
             setComments(existingData.comments || existingData.review || '');
             setRatingId(existingData.ratingId || existingData.feedbackId || null);
           } else {
             // Default reset
-            setRatingValue(5);
+            setRatingValue(null);
             setComments('');
             setRatingId(null);
           }
         }
       } catch (error) {
         if (isMounted) {
-          setRatingValue(5);
+          setRatingValue(null);
           setComments('');
           setRatingId(null);
         }
@@ -93,7 +93,7 @@ export default function FeedbackModal({ appointment, onClose, onSuccess }) {
   }, [appointment]);
 
   const handleReset = () => {
-    setRatingValue(5);
+    setRatingValue(null);
     setComments('');
     setRatingId(null);
     setErrorMessage('');
@@ -107,6 +107,10 @@ export default function FeedbackModal({ appointment, onClose, onSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!appointment) return;
+     if (!ratingValue) {
+        setErrorMessage("Please provide a rating.");
+        return;
+    }
 
     const resolvedAppointmentId = parseInt(
       appointment.appointmentId || appointment.id || appointment.appointmentID,
@@ -178,11 +182,14 @@ export default function FeedbackModal({ appointment, onClose, onSuccess }) {
             component="span" 
             sx={{ fontFamily: 'Georgia, serif', fontWeight: 700, color: '#1A1A1A', display: 'block' }}
           >
-            {ratingId ? 'Update Feedback & Rating' : 'Leave Feedback & Rating'}
+            {ratingId ? 'Edit Your Feedback' : 'Leave Feedback & Rating'}
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            How was your experience with the expert?
+          <Typography variant="body2">
+            {ratingId
+              ? 'Update your previous review and rating.'
+              : 'Tell us how your appointment went.'}
           </Typography>
+
         </Box>
         <IconButton onClick={handleClose} size="small" aria-label="close">
           <CloseIcon />

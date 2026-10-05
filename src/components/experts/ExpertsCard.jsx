@@ -8,9 +8,11 @@ import {
 
 import { useNavigate } from "react-router-dom";
 import ROUTES from "../../routes/routePaths";
+import { useLocation } from "react-router-dom";
 
 export const ExpertCard = ({ expert }) => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   return (
     <Card
@@ -68,7 +70,13 @@ export const ExpertCard = ({ expert }) => {
             textTransform: "none",
           }}
           onClick={() =>
-           navigate(`/experts/${expert.expertId}`)
+           navigate(`/experts/${expert.expertId}`, {
+              state: {
+                expert,
+                serviceCategoryId: location.state?.serviceCategoryId,
+                categoryName: location.state?.categoryName,
+              },
+            })
           }
         >
           View Profile

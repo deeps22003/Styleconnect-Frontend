@@ -1,51 +1,138 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import apiClient from "../../services/apiClient";
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import apiClient from '../../services/apiClient';
 
-// Async Thunks
+// Helper to extract clean error message string from axios error responses
+const formatErrorMessage = (error, defaultMsg) => {
+  if (typeof error.response?.data === 'string') {
+    return error.response.data;
+  }
+  
+  const data = error.response?.data;
+  if (data?.message || data?.title) {
+    return data.message || data.title;
+  }
+  
+  if (data?.errors && typeof data.errors === 'object') {
+    const firstKey = Object.keys(data.errors)[0];
+    if (firstKey && data.errors[firstKey].length > 0) {
+      return data.errors[firstKey][0];
+    }
+  }
+
+  return defaultMsg;
+};
+
+// Helper to resolve numerical status ID to human-readable string
+const getStatusName = (statusId) => {
+  const map = {
+    1: 'Pending',
+    2: 'Confirmed',
+    3: 'Declined',
+    4: 'Completed'
+  };
+  return map[statusId] || 'Pending';
+};
+
+// Helper to map status string to numeric ID
+const getStatusId = (statusStr) => {
+  if (typeof statusStr === 'number') return statusStr;
+  if (!statusStr) return 1;
+
+  const lower = String(statusStr).toLowerCase();
+  if (lower.includes('confirm')) return 2;
+  if (lower.includes('declin') || lower.includes('cancel')) return 3;
+  if (lower.includes('complet')) return 4;
+  return 1;
+};
+
+// 1. Fetch appointments by userType ('Customer' | 'Expert' | 0 | 1) and userId
 export const fetchAppointmentsThunk = createAsyncThunk(
-  "appointments/fetchAppointments",
-  async (userId, { rejectWithValue }) => {
+  'appointments/fetchAppointments',
+  async (payload, { rejectWithValue }) => {
     try {
-      const response = await apiClient.getAppointments(userId);
-      return Array.isArray(response) ? response : response?.data || [];
+      let userType = 1; // Default to Customer (1)
+      let userId = payload;
+
+      // Handle object payload ({ userType, userId }) or primitive ID payload
+      if (typeof payload === 'object' && payload !== null) {
+        userType = payload.userType === 'Expert' || payload.userType === 0 ? 0 : 1;
+        userId = payload.userId;
+      }
+
+      return await apiClient.getAppointmentsByUserTypeAndId(userType, userId);
     } catch (error) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(formatErrorMessage(error, 'Failed to fetch appointments'));
     }
   }
 );
 
+// 2. Create or Update Booking
 export const createBookingThunk = createAsyncThunk(
-  "appointments/createBooking",
-  async (bookingData, { rejectWithValue }) => {
+  'appointments/createBooking',
+  async (payload, { rejectWithValue }) => {
     try {
-      const response = await apiClient.createAppointment(bookingData);
-      return response?.data || response;
+      return await apiClient.createOrUpdateAppointment(payload);
     } catch (error) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(formatErrorMessage(error, 'Failed to create booking'));
     }
   }
 );
 
+// Alias for backwards compatibility
+export const createAppointmentThunk = createBookingThunk;
+
+// 3. Update appointment details thunk
 export const updateAppointmentThunk = createAsyncThunk(
-  "appointments/updateAppointment",
-  async ({ appointmentId, updatedData }, { rejectWithValue }) => {
+  'appointments/updateAppointment',
+  async (payload, { rejectWithValue }) => {
     try {
-      const response = await apiClient.updateAppointment(appointmentId, updatedData);
-      return response?.data || response;
+      return await apiClient.createOrUpdateAppointment(payload);
     } catch (error) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(formatErrorMessage(error, 'Failed to update appointment'));
     }
   }
 );
 
-export const updateAppointmentStatusThunk = createAsyncThunk(
-  "appointments/updateAppointmentStatus",
-  async ({ appointmentId, status }, { rejectWithValue }) => {
+// 4. Cancel appointment thunk
+export const cancelAppointmentThunk = createAsyncThunk(
+  'appointments/cancelAppointment',
+  async (appointmentId, { rejectWithValue }) => {
     try {
-      const response = await apiClient.updateAppointmentStatus(appointmentId, status);
-      return response?.data || response;
+      const response = await apiClient.cancelAppointment(appointmentId);
+      return { appointmentId, response };
     } catch (error) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(formatErrorMessage(error, 'Failed to cancel appointment'));
+    }
+  }
+);
+
+// 5. Update status thunk (Accept / Decline / Complete)
+export const updateAppointmentStatusThunk = createAsyncThunk(
+  'appointments/updateStatus',
+  async ({ appointmentId, status, appointmentStatusId }, { rejectWithValue }) => {
+    try {
+      const rawStatus = appointmentStatusId ?? status;
+      const targetStatusId = getStatusId(rawStatus);
+      let response;
+
+      // Route to cancel endpoint if status is 3 (Cancelled/Declined)
+      if (targetStatusId === 3) {
+        response = await apiClient.cancelAppointment(appointmentId);
+      } else {
+        const payload = {
+          appointmentStatusId: targetStatusId
+        };
+        response = await apiClient.updateAppointmentStatus(appointmentId, payload);
+      }
+
+      return { 
+        appointmentId, 
+        status: typeof status === 'string' ? status : getStatusName(targetStatusId), 
+        appointmentStatusId: targetStatusId, 
+        response 
+      };
+    } catch (error) {
+      return rejectWithValue(formatErrorMessage(error, 'Failed to update status'));
     }
   }
 );

@@ -10,22 +10,48 @@ import {
   Alert 
 } from '@mui/material';
 
-import { 
-  fetchAppointmentsThunk, 
-  createBookingThunk, 
-  updateAppointmentThunk
-} from '../store/slices/appointmentSlice';
+import { fetchAppointmentsThunk,createBookingThunk,updateAppointmentThunk,cancelAppointmentThunk } from '../store/slices/appointmentSlice';
 
 import ProfileCard from '../components/appointments/ProfileCard';
 import AppointmentList from '../components/appointments/AppointmentList';
 //import BookingModal from '../components/appointments/BookingModal';
 import EditBookingModal from '../components/appointments/EditBookingModal';
 import FeedbackModal from '../components/appointments/FeedbackModal';
+import { RegistrationLayout } from '../components/layout/RegistrationLayout';
+import { Navbar } from '../components/landing/Navbar';
+import { HeroSection } from '../components/landing/HeroSection';
+import { useNavigate } from 'react-router-dom';
+import HeroImg1 from "../assets/images/HeroImg_1.png";
+import ROUTES from '../routes/routePaths';
+import { CategoriesSection } from '../components/landing/CategoriesSection';
+import { fetchCategories } from '../features/slices/categorySlice';
+import { getAllExperts } from '../services/expertService';
+import { fetchExperts } from '../features/slices/expertSlice';
+import { Footer } from '../components/landing/FooterSection';
 
 const EMPTY_OBJECT = {};
 
 export default function CustomerAppointmentDashboard() {
   const dispatch = useDispatch();
+  const  navigate=useNavigate();
+
+  const {
+  categories,
+  loading: categoriesLoading,
+  error: categoriesError
+} = useSelector((state) => state.categories);
+
+  useEffect(() => {
+    dispatch(fetchCategories());
+  }, [dispatch]);
+
+  useEffect(() => {
+  dispatch(fetchExperts());
+}, [dispatch]);
+
+  
+
+   
 
   // 1. Resolve logged-in user dynamically from Redux or localStorage
   const authUser = useSelector((state) => state.auth?.user || state.user || EMPTY_OBJECT);
@@ -43,7 +69,20 @@ export default function CustomerAppointmentDashboard() {
   }, [authUser]);
 
   // Priority mapping: Ensure customerId is checked before primary userId/id
-  const userId = currentUser?.customerId || currentUser?.customer_id || currentUser?.id || currentUser?.userId;
+  const customerId = parseInt(
+      currentUser?.customerId ||
+      currentUser?.id ||
+      currentUser?.userId ||
+      localStorage.getItem("customerId"),
+      10
+    );
+  console.log("currentUser", currentUser);
+// console.log("resolved userId", userId);
+console.log("customerId", currentUser?.customerId);
+console.log("customer_id", currentUser?.customer_id);
+console.log("id", currentUser?.id);
+console.log("userId", currentUser?.userId);
+console.log("currentUser", currentUser);
   const isExpert = String(currentUser?.role || currentUser?.roleId || '').toLowerCase().includes('expert') || currentUser?.roleId === 2;
 
   // 2. Extract Redux state
@@ -53,7 +92,16 @@ export default function CustomerAppointmentDashboard() {
   const error = appointmentsState.error || null;
 
   const [services, setServices] = useState([]);
-  const [experts, setExperts] = useState([]);
+  const [successMessage, setSuccessMessage] = useState("");
+  // const [experts, setExperts] = useState([]);
+ const experts = useSelector(
+  (state) => state.experts?.experts || []
+);
+const expertState = useSelector((state) => state.experts);
+console.log("Experts Array", experts);
+
+console.log("Full Expert Slice", expertState);
+console.log("Experts Array", expertState?.experts);
   const [userAddresses, setUserAddresses] = useState([]);
 
   // Modal Visibility States
@@ -65,26 +113,50 @@ export default function CustomerAppointmentDashboard() {
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [editingAppointment, setEditingAppointment] = useState(null);
   const [submitError, setSubmitError] = useState(null);
+  
 
   // Load Data
   const loadAppointments = () => {
-    if (userId) {
-      // Pass userType (1 for Customer) along with numeric userId
-      dispatch(fetchAppointmentsThunk({ userType: 1, userId: Number(userId) }));
-    }
-  };
+      if (customerId) {
+        dispatch(
+          fetchAppointmentsThunk({
+            userType: 1,
+            userId: customerId
+          })
+        );
+      }
+    };
 
   useEffect(() => {
     loadAppointments();
 
     const savedServices = localStorage.getItem('services');
-    const savedExperts = localStorage.getItem('experts');
+    // const savedExperts = localStorage.getItem('experts');
     const savedAddresses = localStorage.getItem('userAddresses');
+    
 
     if (savedServices) setServices(JSON.parse(savedServices));
-    if (savedExperts) setExperts(JSON.parse(savedExperts));
+    // if (savedExperts) setExperts(JSON.parse(savedExperts));
     if (savedAddresses) setUserAddresses(JSON.parse(savedAddresses));
-  }, [dispatch, userId]);
+  }, [dispatch, customerId]);
+
+  useEffect(() => {
+    if (!successMessage) return;
+
+    const timer = setTimeout(() => {
+      setSuccessMessage("");
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [successMessage]);
+
+  useEffect(() => {
+  console.log("Success Message Changed:", successMessage);
+}, [successMessage]);
+
+
+
+  console.log("Experts", experts);
 
   // Modal Toggle Handlers
   const handleOpenModal = () => {
@@ -92,15 +164,48 @@ export default function CustomerAppointmentDashboard() {
     setIsModalOpen(true);
   };
 
-  const handleOpenEditModal = (appointment) => {
-    setEditingAppointment(appointment);
-    setIsEditModalOpen(true);
-  };
+ const handleOpenEditModal = (appointment) => {
+  const expert = experts.find(
+    (e) =>
+      Number(e.expertId) ===
+      Number(appointment.expertId)
+  );
+
+  console.log("Appointment ExpertId:", appointment.expertId);
+  console.log("Matched Expert:", expert);
+
+  setEditingAppointment({
+    ...appointment,
+    hourlyCharges: expert?.hourlyCharges || 0
+  });
+
+  setIsEditModalOpen(true);
+};
 
   const handleOpenFeedbackModal = (appointment) => {
     setSelectedAppointment(appointment);
     setIsFeedbackModalOpen(true);
   };
+
+
+  const handleCancelAppointment = async (appointment) => {
+      try {
+        await dispatch(
+          cancelAppointmentThunk(
+            appointment.appointmentId
+          )
+        ).unwrap();
+        setSuccessMessage("Appointment cancelled successfully!");
+
+        loadAppointments();
+      } catch (err) {
+        setSubmitError(
+          typeof err === "string"
+            ? err
+            : "Failed to cancel appointment."
+        );
+      }
+    };
 
   // Submit Handlers
   const handleAddBooking = async (rawFormData) => {
@@ -109,7 +214,7 @@ export default function CustomerAppointmentDashboard() {
 
     const formattedPayload = {
       appointmentId: 0,
-      customerId: Number(userId),
+      customerId: Number(customerId),
       customerName: loggedInName,
       serviceCategoryId: Number(rawFormData.serviceCategoryId),
       expertId: Number(rawFormData.expertId),
@@ -124,6 +229,7 @@ export default function CustomerAppointmentDashboard() {
 
     try {
       await dispatch(createBookingThunk(formattedPayload)).unwrap();
+      setSuccessMessage("Appointment booked successfully!");
       setIsModalOpen(false);
       loadAppointments(); // Refresh list to sync state
     } catch (err) {
@@ -135,6 +241,7 @@ export default function CustomerAppointmentDashboard() {
     setSubmitError(null);
     try {
       await dispatch(updateAppointmentThunk(updatedData)).unwrap();
+      setSuccessMessage("Appointment updated successfully!");
       setIsEditModalOpen(false);
       setEditingAppointment(null);
       loadAppointments(); // Refresh list to sync state
@@ -149,20 +256,54 @@ export default function CustomerAppointmentDashboard() {
     setSelectedAppointment(null);
     loadAppointments(); // Re-fetch appointments to update state instantly
   };
+  const user=useSelector(
+        (state)=>state.auth.user
+    )
+
+    const handleExploreExperts = () => {
+      navigate(ROUTES.EXPERTS);
+    };
 
   return (
-    <Box sx={{ backgroundColor: '#FAF6F0', minHeight: '100vh', py: 4, px: 2 }}>
-      <Container maxWidth="md">
-
+  
+      <RegistrationLayout>
         {/* Profile Card Header */}
-        <ProfileCard 
+       <Navbar
+         logo="StyleConnect"
+         showNavigation={true}
+         showBackButton={false}
+        showAuthActions={false}
+        />
+      
+
+        <HeroSection
+          badge="Beauty & Wellness"
+          title={`Welcome ${user?.fullName || "Customer"}`}
+          description="Discover professional beauty experts and premium services tailored to your needs. Book appointments, explore new styles, and connect with trusted experts."
+          primaryButtonText="Explore Experts"
+          onPrimaryClick={handleExploreExperts}
+          image={HeroImg1}
+        />
+
+        <CategoriesSection
+        sectionTag="Book an Appointment by a Service"
+        heading="A style for every moment"
+        description="From wedding-day glam to a quick weekday trim, explore the categories our community books most."
+        services={categories}
+        loading={categoriesLoading}
+        error={categoriesError}
+      />
+
+        {/* <ProfileCard 
           user={currentUser}
           name={currentUser?.name || currentUser?.fullName || `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim()}
           roleBadge={isExpert ? 'Expert Account' : 'Customer Account'}
           actionButtonText="+ Book New Appointment"
           onActionClick={handleOpenModal}
           onBookClick={handleOpenModal}
-        />
+        /> */}
+
+
 
         {/* Tab Navigation */}
         <Box sx={{ my: 3.5, display: 'flex', justifyContent: 'flex-start' }}>
@@ -210,6 +351,17 @@ export default function CustomerAppointmentDashboard() {
             Appointment History
           </Typography>
 
+          {successMessage && (
+            <Alert
+              severity="success"
+              sx={{ mb: 2, borderRadius: 2 }}
+              onClose={() => setSuccessMessage("")}
+            >
+              {successMessage}
+            </Alert>
+          )}
+
+
           {submitError && (
             <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }} onClose={() => setSubmitError(null)}>
               {submitError}
@@ -228,12 +380,13 @@ export default function CustomerAppointmentDashboard() {
             </Box>
           )}
 
-          <AppointmentList 
-            appointments={reduxAppointments} 
-            customerId={userId}
-            onLeaveFeedback={handleOpenFeedbackModal}
-            onEditAppointment={handleOpenEditModal}
-          />
+         <AppointmentList
+          appointments={reduxAppointments}
+          customerId={customerId}
+          onLeaveFeedback={handleOpenFeedbackModal}
+          onEditAppointment={handleOpenEditModal}
+          onCancelAppointment={handleCancelAppointment}
+        />
         </Paper>
 
         {/* Modals
@@ -278,7 +431,7 @@ export default function CustomerAppointmentDashboard() {
             onSubmit={handleFeedbackSubmit}
           />
         )}
-      </Container>
-    </Box>
+        <Footer/>
+   </RegistrationLayout>
   );
 }

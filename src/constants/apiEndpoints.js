@@ -50,6 +50,10 @@ const API_ENDPOINTS = {
     GET_ALLEXPERTS:"/api/Experts",
     GET_EXPERT_BY_ID:(expertId)=>`/api/Experts/${expertId}`
   },
+  CUSTOMERS:{
+    GET_CUSTOMER_BY_ID:(customerId)=>`/api/Customers/${customerId}`,
+    GET_CUSTOMER_BY_USERID:(userId)=>`api/Customers/user/${userId}`
+  },
   LOCATION:{
     GET_STATES:"/api/Locations/states",
     GET_DISTRICTS_BY_STATEID:(stateId)=> `/api/Locations/states/${stateId}/districts`,

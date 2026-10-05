@@ -14,12 +14,15 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams,useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { setSelectedExpert,setBookingIntent,fetchExperts } from "../../store/slices/expertSlice";
 import { RegistrationLayout } from "../../components/layout/RegistrationLayout";
 import { RegistrationNavbar } from "../../components/navigation/RegistrationNavbar";
 import { Navbar } from "../../components/landing/Navbar";
+import BookingModal from "../../components/appointments/BookingModal";
+import { createBookingThunk } from "../../store/slices/appointmentSlice";
+
 
 
 export const ExpertProfilePage = () => {
@@ -27,11 +30,33 @@ export const ExpertProfilePage = () => {
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+
+    const selectedCategoryId =
+      location.state?.serviceCategoryId;
+
+    const selectedCategoryName =
+      location.state?.categoryName;
 
   const [openLoginDialog, setOpenLoginDialog] = useState(false);
+  const [isBookingModalOpen, setIsBookingModalOpen] =useState(false);
 
   const { isAuthenticated ,user} = useSelector((state) => state.auth);
   const { experts, loading, error } = useSelector((state) => state.experts);
+
+  const [userAddresses, setUserAddresses] = useState([]);
+
+    useEffect(() => {
+    const savedAddresses = localStorage.getItem("userAddresses");
+
+    if (savedAddresses) {
+      setUserAddresses(JSON.parse(savedAddresses));
+    }
+  }, []);
+
+  const customerId =user?.customerId ||user?.customer_id ||user?.id;
+
+
 
   useEffect(() => {
     if (experts.length === 0) {
@@ -56,7 +81,7 @@ export const ExpertProfilePage = () => {
     }
 
 
-     navigate(`/experts/${selectedExpert.expertId}`);
+     setIsBookingModalOpen(true);
     
   };
 
@@ -71,6 +96,34 @@ export const ExpertProfilePage = () => {
   if (!selectedExpert) {
     return <Typography align="center">Expert not found</Typography>;
   }
+
+    const handleBookingSubmit = async (formData) => {
+  const payload = {
+    ...formData,
+    appointmentId: 0,
+    customerName: user?.fullName,
+    appointmentStatusId: 1,
+  };
+
+  console.log("Final Payload:", payload);
+
+  try {
+    await dispatch(createBookingThunk(payload)).unwrap();
+
+    setIsBookingModalOpen(false);
+
+    navigate("/customer/dashboard");
+  } catch (error) {
+      console.log("Full Error:", error);
+
+      console.log("Response Data:", error?.response?.data);
+
+      console.log("Status:", error?.response?.status);
+
+      console.log("Payload:", payload);
+    }
+};
+
 
   return (
     <RegistrationLayout>
@@ -226,6 +279,19 @@ export const ExpertProfilePage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {isBookingModalOpen && (
+        <BookingModal
+          open={isBookingModalOpen}
+          isOpen={isBookingModalOpen}
+          onClose={() => setIsBookingModalOpen(false)}
+          onSubmit={handleBookingSubmit}
+          userAddresses={userAddresses}
+          selectedExpert={selectedExpert}
+          selectedCategoryId={selectedCategoryId}
+          selectedCategoryName={selectedCategoryName}
+        />
+      )}
     </RegistrationLayout>
   );
 };

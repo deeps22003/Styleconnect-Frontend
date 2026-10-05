@@ -5,7 +5,13 @@ const initialState = {
   accessToken: null,
   refreshToken: null,
   isAuthenticated: false,
+  user: null,
+  accessToken: null,
+  refreshToken: null,
+  isAuthenticated: false,
 };
+ const authSlice=createSlice({
+    name:"auth",
  const authSlice=createSlice({
     name:"auth",
     initialState,
@@ -18,7 +24,21 @@ const initialState = {
             state.accessToken=accessToken;
             state.refreshToken=refreshToken;
             state.isAuthenticated=true;
+    reducers:{
+        loginSuccess:(state,action)=>{
+            const {userId,roleId,fullName,accessToken,refreshToken}=action.payload;
+            state.user={
+                userId,roleId,fullName
+            };
+            state.accessToken=accessToken;
+            state.refreshToken=refreshToken;
+            state.isAuthenticated=true;
         },
+        logout:(state)=>{
+            state.user=null;
+            state.accessToken=null;
+            state.refreshToken=null;
+            state.isAuthenticated=false;
         logout:(state)=>{
             state.user=null;
             state.accessToken=null;

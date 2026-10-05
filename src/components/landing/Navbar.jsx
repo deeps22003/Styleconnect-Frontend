@@ -47,14 +47,15 @@ export const Navbar = ({
     setAnchorEl(null);
   };
 
-  const handleLogoClick=()=>{
-    if(isAuthenticated){
-      dispatch(logout());
-      clearAuthData();
-    }
-    navigate(ROUTES.HOME);
+  const handleLogoClick = () => {
+
+  if (isAuthenticated) {
+    dispatch(logout());
+    clearAuthData();
   }
 
+  navigate(ROUTES.HOME);
+};
   return (
     <AppBar
       position="sticky"
@@ -223,7 +224,7 @@ export const Navbar = ({
                 anchorEl={anchorEl}
                 open={open}
                 onClose={handleCloseMenu}
-                PaperProps={{
+                slotProps={{
                   sx: {
                     width: 250,
                     borderRadius: 4,
@@ -251,13 +252,15 @@ export const Navbar = ({
                 </MenuItem>
 
                 <MenuItem
-                  onClick={() => {
-                    // dispatch(logout())
-                    handleCloseMenu();
-                  }}
-                >
-                  Logout
-                </MenuItem>
+                 onClick={() => {
+                  dispatch(logout());
+                  clearAuthData();
+                  handleCloseMenu();
+                  navigate(ROUTES.HOME);
+                }}
+              >
+              Logout
+            </MenuItem>
               </Menu>
             </>
           )}

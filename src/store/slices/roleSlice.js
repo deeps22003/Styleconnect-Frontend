@@ -12,8 +12,13 @@ export const fetchRoles = createAsyncThunk(
     try {
       return await getRoles();
     } catch (error) {
-      return rejectWithValue(error);
-    }
+    return rejectWithValue(
+        error.response?.data?.message ||
+        error.message ||
+        "Request failed"
+    );
+}
+
   }
 );
 

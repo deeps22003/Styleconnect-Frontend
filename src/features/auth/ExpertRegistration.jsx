@@ -58,13 +58,14 @@ export const ExpertRegistration = () => {
   );
  
   const {
-    states = [],
-    districts = [],
-    cities = [],
-    areas = [],
-  } = useSelector((state) => state.location || {});
-  const { roles = [] } = useSelector((state) => state.roles || {});
- 
+    states,
+    districts,
+    cities,
+    areas,
+  } = useSelector((state) => state.location);
+  
+  const {roles}=useSelector((state)=>state.roles);
+
   useEffect(() => {
     dispatch(fetchCategories());
   }, [dispatch]);
