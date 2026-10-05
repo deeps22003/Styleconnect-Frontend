@@ -15,7 +15,7 @@ import { RegistrationNavbar } from "../../components/navigation/RegistrationNavb
 import { Typography } from "@mui/material";
 import ROUTES from "../../routes/routePaths";
 import { Navbar } from "../../components/landing/Navbar";
-import { clearBookingFlow } from "../slices/expertSlice";
+import { clearBookingFlow } from "../../store/slices/expertSlice";
 
 const credentialData={
     credential:"",

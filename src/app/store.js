@@ -1,10 +1,10 @@
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "../features/auth/authSlice";
 import appointmentReducer from "../store/slices/appointmentSlice";
-import categoryReducer from "../features/slices/categorySlice";
-import expertReducer from "../features/slices/expertSlice";
-import locationReducer from "../features/slices/locationSlice";
-import roleReducer from "../features/slices/roleSlice";
+import categoryReducer from "../store/slices/categorySlice";
+import expertReducer from "../store/slices/expertSlice";
+import locationReducer from "../store/slices/locationSlice";
+import roleReducer from "../store/slices/roleSlice";
 
 export const store = configureStore({
   reducer: {

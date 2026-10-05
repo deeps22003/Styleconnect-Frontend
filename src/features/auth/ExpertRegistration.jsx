@@ -18,14 +18,14 @@ import { PrimaryButton } from "../../components/buttons/PrimaryButton";
  
 import { registerUser } from "../../services/authService";
  
-import { fetchCategories } from "../slices/categorySlice";
+import { fetchCategories } from "../../store/slices/categorySlice";
  
 import { fetchStates,fetchAreasByCity,fetchCitiesByDistrict,fetchDistrictsByState,
-  clearAreas,clearCities } from "../slices/locationSlice";
+  clearAreas,clearCities } from "../../store/slices/locationSlice";
 import { createAddress } from "../../services/locationService";
  
 import { Navbar } from "../../components/landing/Navbar";
-import { fetchRoles } from "../slices/roleSlice";
+import { fetchRoles } from "../../store/slices/roleSlice";
 import { validateFields } from "../../helpers/formValidator";
  
 const expertData = {

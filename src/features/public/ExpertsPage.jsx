@@ -13,8 +13,8 @@
   import { categoryImages } from "../../assets/icons/categoryIcons";
 
   import ROUTES from "../../routes/routePaths";
-  import { fetchExperts } from "../slices/expertSlice";
-  import { fetchCategories } from "../slices/categorySlice";
+  import { fetchExperts } from "../../store/slices/expertSlice";
+  import { fetchCategories } from "../../store/slices/categorySlice";
   import { categoryDetails } from "../data/categoryDetails";
 
   export const ExpertsPage = () => {

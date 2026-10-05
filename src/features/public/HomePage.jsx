@@ -12,7 +12,7 @@ import { CategoriesSection } from "../../components/landing/CategoriesSection";
 import { HowItWorksSection } from "../../components/landing/HowItWorksSection";
 // import { howItWorksSteps } from "../data/howItWorksData";
 import HeroImg1 from "../../assets/images/HeroImg_1.png";
-import { fetchCategories } from "../slices/categorySlice";
+import { fetchCategories } from "../../store/slices/categorySlice";
 import { useEffect } from "react";
 import { AboutStyleConnect } from "../../components/landing/AboutStyleConnect";
 import { AudienceSection } from "../../components/landing/AudienceSection";

@@ -16,7 +16,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { setSelectedExpert,setBookingIntent,fetchExperts } from "../slices/expertSlice";
+import { setSelectedExpert,setBookingIntent,fetchExperts } from "../../store/slices/expertSlice";
 import { RegistrationLayout } from "../../components/layout/RegistrationLayout";
 import { RegistrationNavbar } from "../../components/navigation/RegistrationNavbar";
 import { Navbar } from "../../components/landing/Navbar";

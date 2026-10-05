@@ -16,10 +16,10 @@ import { FormProgress } from "../../components/form/FormProgress";
 import { registerUser } from "../../services/authService";
 import { Navbar } from "../../components/landing/Navbar";
 
-import { fetchStates,fetchAreasByCity,fetchCitiesByDistrict,fetchDistrictsByState } from "../slices/locationSlice";
-import { clearAreas,clearCities } from "../slices/locationSlice";
+import { fetchStates,fetchAreasByCity,fetchCitiesByDistrict,fetchDistrictsByState } from "../../store/slices/locationSlice";
+import { clearAreas,clearCities } from "../../store/slices/locationSlice";
 import { createAddress } from "../../services/locationService";
-import { fetchRoles } from "../slices/roleSlice";
+import { fetchRoles } from "../../store/slices/roleSlice";
 import { validateFields } from "../../helpers/formValidator";
 
 
