@@ -18,7 +18,10 @@ import {
 
 import ProfileCard from '../components/appointments/ProfileCard';
 import ExpertAppointmentList from '../components/appointments/ExpertAppointmentList';
-import apiClient from '../services/apiClient';
+import { getFeedbackRatingByExpertId} from '../services/feedbackService';
+import { RegistrationLayout } from '../components/layout/RegistrationLayout';
+import { Navbar } from '../components/landing/Navbar';
+import { Footer } from '../components/landing/FooterSection';
 
 export default function ExpertDashboard() {
   const dispatch = useDispatch();
@@ -29,6 +32,8 @@ export default function ExpertDashboard() {
     const savedUser = localStorage.getItem('user');
     return savedUser ? JSON.parse(savedUser) : {};
   });
+
+  console.log(currentUser);
 
   // Ensure expertId is parsed as an integer
   const expertId = parseInt(currentUser.expertId || currentUser.id || currentUser.userId || localStorage.getItem('expertId') || 1, 10);
@@ -45,12 +50,27 @@ export default function ExpertDashboard() {
   const [feedbackError, setFeedbackError] = useState(null);
 
   // Fetch Appointments on mount
-  useEffect(() => {
-    if (expertId) {
-      // Pass userType: 0 (0 = Expert, 1 = Customer) to match backend route /api/Appointments/{userType:int}/{userId:int}
-      dispatch(fetchAppointmentsThunk({ userType: 0, userId: expertId }));
-    }
-  }, [dispatch, expertId]);
+ useEffect(() => {
+  console.log("expertId", expertId);
+
+  if (expertId) {
+    console.log("Fetching appointments...");
+    dispatch(
+      fetchAppointmentsThunk({
+        userType: 0,
+        userId: expertId
+      })
+    );
+  }
+}, [dispatch, expertId]);
+
+useEffect(() => {
+  console.log("Appointments State:", {
+    appointments,
+    loading,
+    error
+  });
+}, [appointments, loading, error]);
 
   // Fetch Expert Feedbacks when active tab is changed to 'feedback'
   useEffect(() => {
@@ -59,7 +79,7 @@ export default function ExpertDashboard() {
         try {
           setFeedbackLoading(true);
           setFeedbackError(null);
-          const data = await apiClient.getFeedbackRatingByExpertId(expertId);
+          const data = await getFeedbackRatingByExpertId(expertId);
           setFeedbacks(data || []);
         } catch (err) {
           console.error('Failed to load feedback:', err);
@@ -89,17 +109,22 @@ export default function ExpertDashboard() {
   };
 
   return (
-    <Box sx={{ backgroundColor: '#FAF6F0', minHeight: '100vh', py: 4 }}>
-      <Container maxWidth="md">
-        
+   
+      <RegistrationLayout>  
+          <Navbar
+              logo="StyleConnect"
+             showNavigation={true}
+              showBackButton={false}
+              showAuthActions={false}
+             />
         {/* Profile Header */}
-        <ProfileCard 
+        {/* <ProfileCard 
           user={currentUser}
           name={currentUser.name || currentUser.fullName || 'Expert'}
           roleBadge="Expert Account"
           statusBadge="• Accepting Bookings"
           avatarInitial={(currentUser.name || currentUser.fullName || 'E').charAt(0).toUpperCase()}
-        />
+        /> */}
 
         {/* Navigation Tabs */}
         <Box sx={{ my: 3, borderBottom: 1, borderColor: 'divider' }}>
@@ -216,7 +241,7 @@ export default function ExpertDashboard() {
             )}
           </Card>
         )}
-      </Container>
-    </Box>
+        <Footer/>
+     </RegistrationLayout>  
   );
 }

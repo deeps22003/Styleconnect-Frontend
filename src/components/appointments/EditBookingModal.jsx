@@ -1,293 +1,343 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  IconButton,
-  Typography,
   TextField,
   MenuItem,
   Button,
-  Alert,
-  Box,
-  Stack,
-  InputAdornment
-} from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
+  Grid,
+  IconButton,
+  Typography
+} from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 
-// Standard 12-hour slots (10:00 AM to 06:00 PM)
-const BASE_TIME_SLOTS = [
-  '10:00 AM', '10:30 AM',
-  '11:00 AM', '11:30 AM',
-  '12:00 PM', '12:30 PM',
-  '01:00 PM', '01:30 PM',
-  '02:00 PM', '02:30 PM',
-  '03:00 PM', '03:30 PM',
-  '04:00 PM', '04:30 PM',
-  '05:00 PM', '05:30 PM',
-  '06:00 PM'
+const TIME_SLOTS = [
+  "10:00 AM",
+  "10:30 AM",
+  "11:00 AM",
+  "11:30 AM",
+  "12:00 PM",
+  "12:30 PM",
+  "01:00 PM",
+  "01:30 PM",
+  "02:00 PM",
+  "02:30 PM",
+  "03:00 PM",
+  "03:30 PM",
+  "04:00 PM",
+  "04:30 PM",
+  "05:00 PM",
+  "05:30 PM",
+  "06:00 PM"
 ];
 
-// Get current date string in YYYY-MM-DD format
-const getTodayIsoDate = () => {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
+const convertTo24Hour = (timeStr) => {
+  if (!timeStr) return "10:00:00";
 
-// Clean incoming date value to YYYY-MM-DD string format
-const formatToIsoDate = (dateVal) => {
-  if (!dateVal) return getTodayIsoDate();
-  if (typeof dateVal === 'string' && dateVal.includes('T')) {
-    return dateVal.split('T')[0];
+  const [time, modifier] = timeStr.split(" ");
+  let [hours, minutes] = time.split(":");
+
+  if (hours === "12") {
+    hours = "00";
   }
-  return dateVal;
+
+  if (modifier === "PM") {
+    hours = Number(hours) + 12;
+  }
+
+  return `${String(hours).padStart(2, "0")}:${minutes}:00`;
 };
 
-// Normalize incoming 24h or varied time strings to 12h format
 const formatTo12Hour = (timeStr) => {
-  if (!timeStr) return '';
-  const cleanStr = timeStr.trim().toUpperCase();
-  if (cleanStr.includes('AM') || cleanStr.includes('PM')) {
-    return cleanStr;
+  if (!timeStr) return "";
+
+  const clean = timeStr.trim().toUpperCase();
+
+  if (clean.includes("AM") || clean.includes("PM")) {
+    return clean;
   }
-  const [hours, minutes] = cleanStr.split(':').map(Number);
-  if (isNaN(hours)) return timeStr;
-  const period = hours >= 12 ? 'PM' : 'AM';
+
+  const [hours, minutes] = clean.split(":").map(Number);
+
+  const period = hours >= 12 ? "PM" : "AM";
   const h12 = hours % 12 || 12;
-  const formattedHour = h12 < 10 ? `0${h12}` : `${h12}`;
-  const formattedMin = minutes < 10 ? `0${minutes || 0}` : `${minutes}`;
-  return `${formattedHour}:${formattedMin} ${period}`;
+
+  return `${String(h12).padStart(2, "0")}:${String(
+    minutes || 0
+  ).padStart(2, "0")} ${period}`;
 };
 
-// Normalize location values
-const formatLocationType = (loc) => {
-  if (!loc) return 'At Home (Doorstep)';
-  if (loc.toLowerCase().includes('doorstep') || loc.toLowerCase().includes('home')) {
-    return 'At Home (Doorstep)';
+const calculateDurationHours = (startSlot, endSlot) => {
+  const startIndex = TIME_SLOTS.indexOf(startSlot);
+  const endIndex = TIME_SLOTS.indexOf(endSlot);
+
+  if (
+    startIndex === -1 ||
+    endIndex === -1 ||
+    endIndex <= startIndex
+  ) {
+    return 1;
   }
-  if (loc.toLowerCase().includes('studio') || loc.toLowerCase().includes('expert')) {
-    return 'At Expert Studio';
-  }
-  return loc;
+
+  return (endIndex - startIndex) * 0.5;
 };
 
-// Ensures current value exists in the options list to prevent MUI out-of-range warnings
-const ensureValueInSlots = (slots, value) => {
-  if (!value || slots.includes(value)) return slots;
-  return [...slots, value].sort();
-};
-
-export default function EditBookingModal({ 
-  isOpen, 
-  onClose, 
-  booking, 
-  onSaveSuccess,
-  serviceOptions = [],
-  expertOptions = []
+export default function EditBookingModal({
+  isOpen,
+  booking,
+  onClose,
+  onSaveSuccess
 }) {
-  const todayStr = getTodayIsoDate();
+  const todayDate = new Date().toISOString().split("T")[0];
 
   const [formData, setFormData] = useState({
-    serviceName: '',
-    occasion: '',
-    expertName: '',
-    appointmentDate: todayStr,
-    startTime: '',
-    endTime: '',
-    totalPrice: '',
-    locationType: '',
-    serviceAddress: ''
+    appointmentDate: "",
+    startTime: "",
+    endTime: "",
+    occasion: "",
+    serviceAddress: "",
+    totalPrice: 0
   });
 
   useEffect(() => {
-    if (booking) {
-      const parsedDate = formatToIsoDate(booking.appointmentDate || booking.date);
-      setFormData({
-        // ✅ FIX 1: Fetch actual service name separate from occasion
-        serviceName: booking.serviceCategoryName || booking.serviceName || booking.service || '',
-        
-        // ✅ FIX 2: Fetch occasion independently into its own field
-        occasion: booking.occasion || '',
-        
-        expertName: booking.expertBusinessName || booking.expertName || booking.expertFullName || '',
-        appointmentDate: parsedDate || todayStr,
-        startTime: formatTo12Hour(booking.startTime || booking.time || ''),
-        endTime: formatTo12Hour(booking.endTime || ''),
-        totalPrice: booking.totalPrice ?? booking.price ?? '',
-        locationType: formatLocationType(booking.locationType),
-        serviceAddress: booking.serviceAddress || booking.address || ''
-      });
-    }
-  }, [booking, todayStr]);
+    if (!booking) return;
+
+    setFormData({
+      appointmentDate:
+        booking.appointmentDate?.split("T")[0] ||
+        booking.date?.split("T")[0] ||
+        "",
+
+      startTime: formatTo12Hour(
+        booking.startTime || booking.time
+      ),
+
+      endTime: formatTo12Hour(
+        booking.endTime || ""
+      ),
+
+      occasion: booking.occasion || "",
+
+      serviceAddress:
+        booking.serviceAddress ||
+        booking.address ||
+        "",
+        totalPrice:booking.totalPrice || 0
+    });
+  }, [booking]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    setFormData((prev) => {
+      const updated = {
+        ...prev,
+        [name]:value
+      };
+
+      if (name === "startTime") {
+        const startIndex =
+          TIME_SLOTS.indexOf(value);
+
+        const endIndex =
+          TIME_SLOTS.indexOf(prev.endTime);
+
+        if (
+          startIndex !== -1 &&
+          endIndex <= startIndex
+        ) {
+          updated.endTime =
+            TIME_SLOTS[startIndex + 1] || "";
+        }
+      }
+
+      return updated;
+    });
   };
+
+  const filteredEndTimeSlots =
+    TIME_SLOTS.filter((slot) => {
+      if (!formData.startTime) {
+        return true;
+      }
+
+      return (
+        TIME_SLOTS.indexOf(slot) >
+        TIME_SLOTS.indexOf(formData.startTime)
+      );
+    });
+
+  const durationHours =
+    calculateDurationHours(
+      formData.startTime,
+      formData.endTime
+    );
+
+  const hourlyCharge =
+    booking?.hourlyCharges ||
+    booking?.pricePerHour ||
+    booking?.hourlyRate ||
+    0;
+
+  const totalPrice =
+    durationHours * (booking?.hourlyCharges || 0);
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Ensure selected date is not in the past relative to today
-    const finalDate = (formData.appointmentDate && formData.appointmentDate >= todayStr)
-      ? formData.appointmentDate 
-      : todayStr;
+    const payload = {
+      appointmentId: booking.appointmentId,
 
-    if (onSaveSuccess) {
-      onSaveSuccess({
-        ...booking,
-        ...formData,
-        appointmentDate: finalDate,
-        date: finalDate,
-        expertBusinessName: formData.expertName,
-        address: formData.serviceAddress,
-        occasion: formData.occasion
-      });
-    }
-    if (onClose) onClose();
+      customerId: booking.customerId,
+
+      expertId: booking.expertId,
+
+      serviceCategoryId:
+        booking.serviceCategoryId,
+
+      appointmentDate:
+        formData.appointmentDate,
+
+      startTime: convertTo24Hour(
+        formData.startTime
+      ),
+
+      endTime: convertTo24Hour(
+        formData.endTime
+      ),
+
+      occasion: formData.occasion,
+      durationHours: durationHours,
+
+      totalPrice: Number(totalPrice.toFixed(2)),
+
+      addressId: booking.addressId,
+
+      serviceAddress:
+        formData.serviceAddress,
+
+      appointmentStatusId: 1
+    };
+
+    console.log(
+      "Update Appointment Payload:",
+      payload
+    );
+
+    onSaveSuccess(payload);
   };
 
-  const isModalOpen = Boolean(isOpen && booking);
+  const fieldStyle = {
+    "& .MuiOutlinedInput-root": {
+      backgroundColor: "#FAF6F0",
+      borderRadius: "12px",
+      "& fieldset": {
+        borderColor: "#E0DCD5"
+      },
+      "&:hover fieldset": {
+        borderColor: "#8C2B4E"
+      },
+      "&.Mui-focused fieldset": {
+        borderColor: "#8C2B4E"
+      }
+    }
+  };
 
-  // Safely build options that include the loaded booking values
-  const startTimeSlots = ensureValueInSlots(BASE_TIME_SLOTS, formData.startTime);
-  const endTimeSlots = ensureValueInSlots(BASE_TIME_SLOTS, formData.endTime);
+  console.log("booking", booking);
+console.log("hourlyCharges", booking?.hourlyCharges);
+console.log(totalPrice)
 
   return (
-    <Dialog 
-      open={isModalOpen} 
-      onClose={onClose} 
-      fullWidth 
+    <Dialog
+      open={Boolean(isOpen && booking)}
+      onClose={onClose}
+      fullWidth
       maxWidth="sm"
       disableRestoreFocus
       slotProps={{
         paper: {
-          sx: { borderRadius: 3, p: 1 }
+          sx: {
+            borderRadius: "20px",
+            p: 2
+          }
         }
       }}
     >
-      {/* HEADER */}
-      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
-        <Typography variant="h5" component="span" sx={{ fontWeight: 700, color: 'text.primary' }}>
-          Edit Booking Request
+      <DialogTitle
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center"
+        }}
+      >
+        <Typography
+          variant="h5"
+          sx={{
+            fontWeight: 700
+          }}
+        >
+          Edit Appointment
         </Typography>
-        <IconButton autoFocus onClick={onClose} size="small" aria-label="close">
-          <CloseIcon fontSize="small" />
+
+        <IconButton onClick={onClose}>
+          <CloseIcon />
         </IconButton>
       </DialogTitle>
 
       <form onSubmit={handleSubmit}>
-        <DialogContent dividers sx={{ borderColor: '#f0e6e1' }}>
-          <Stack spacing={2.5}>
-            
-            {/* SELECT / DISPLAY SERVICE */}
-            {serviceOptions.length > 0 ? (
-              <TextField
-                select
-                fullWidth
-                label="Select Service"
-                name="serviceName"
-                value={formData.serviceName}
-                onChange={handleChange}
-                required
-                variant="outlined"
-                size="small"
-              >
-                {serviceOptions.map((service, index) => {
-                  const val = typeof service === 'object' ? service.name : service;
-                  return (
-                    <MenuItem key={index} value={val}>
-                      {val}
-                    </MenuItem>
-                  );
-                })}
-              </TextField>
-            ) : (
+        <DialogContent>
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="Service Name"
-                name="serviceName"
-                value={formData.serviceName}
-                onChange={handleChange}
-                placeholder="Service Name"
-                required
-                variant="outlined"
-                size="small"
+                label="Service"
+                disabled
+                value={
+                  booking?.serviceCategoryName ||
+                  booking?.serviceName ||
+                  booking?.service ||
+                  ""
+                }
+                sx={fieldStyle}
               />
-            )}
+            </Grid>
 
-            {/* ✅ FIX 3: OCCASION FIELD */}
-            <TextField
-              fullWidth
-              label="Occasion"
-              name="occasion"
-              value={formData.occasion}
-              onChange={handleChange}
-              placeholder="e.g. Wedding, Reception, Party"
-              required
-              variant="outlined"
-              size="small"
-            />
-
-            {/* SELECT EXPERT */}
-            {expertOptions.length > 0 ? (
-              <TextField
-                select
-                fullWidth
-                label="Select Expert"
-                name="expertName"
-                value={formData.expertName}
-                onChange={handleChange}
-                required
-                variant="outlined"
-                size="small"
-              >
-                {expertOptions.map((expert, index) => {
-                  const val = typeof expert === 'object' ? (expert.name || expert.expertBusinessName) : expert;
-                  return (
-                    <MenuItem key={index} value={val}>
-                      {val}
-                    </MenuItem>
-                  );
-                })}
-              </TextField>
-            ) : (
+            <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="Expert Name"
-                name="expertName"
-                value={formData.expertName}
-                onChange={handleChange}
-                placeholder="Expert Name"
-                required
-                variant="outlined"
-                size="small"
+                label="Expert"
+                disabled
+                value={
+                  booking?.expertBusinessName ||
+                  booking?.expertName ||
+                  ""
+                }
+                sx={fieldStyle}
               />
-            )}
+            </Grid>
 
-            {/* DATE */}
-            <TextField
-              fullWidth
-              type="date"
-              label="Date"
-              name="appointmentDate"
-              value={formData.appointmentDate}
-              onChange={handleChange}
-              required
-              variant="outlined"
-              size="small"
-              slotProps={{
-                inputLabel: { shrink: true },
-                htmlInput: { min: todayStr }
-              }}
-            />
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                required
+                type="date"
+                label="Date"
+                name="appointmentDate"
+                value={formData.appointmentDate}
+                onChange={handleChange}
+                InputLabelProps={{
+                  shrink: true
+                }}
+                inputProps={{
+                  min: todayDate
+                }}
+                sx={fieldStyle}
+              />
+            </Grid>
 
-            {/* START & END TIME */}
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Grid item xs={6}>
               <TextField
                 select
                 fullWidth
@@ -296,17 +346,20 @@ export default function EditBookingModal({
                 name="startTime"
                 value={formData.startTime}
                 onChange={handleChange}
-                variant="outlined"
-                size="small"
+                sx={fieldStyle}
               >
-                <MenuItem value="" disabled>Select Start Time</MenuItem>
-                {startTimeSlots.map((slot) => (
-                  <MenuItem key={slot} value={slot}>
+                {TIME_SLOTS.map((slot) => (
+                  <MenuItem
+                    key={slot}
+                    value={slot}
+                  >
                     {slot}
                   </MenuItem>
                 ))}
               </TextField>
+            </Grid>
 
+            <Grid item xs={6}>
               <TextField
                 select
                 fullWidth
@@ -315,90 +368,74 @@ export default function EditBookingModal({
                 name="endTime"
                 value={formData.endTime}
                 onChange={handleChange}
-                variant="outlined"
-                size="small"
+                sx={fieldStyle}
               >
-                <MenuItem value="" disabled>Select End Time</MenuItem>
-                {endTimeSlots.map((slot) => (
-                  <MenuItem key={slot} value={slot}>
-                    {slot}
-                  </MenuItem>
-                ))}
+                {filteredEndTimeSlots.map(
+                  (slot) => (
+                    <MenuItem
+                      key={slot}
+                      value={slot}
+                    >
+                      {slot}
+                    </MenuItem>
+                  )
+                )}
               </TextField>
-            </Box>
+            </Grid>
 
-            {/* TOTAL PRICE */}
-            <TextField
-              fullWidth
-              type="number"
-              label="Total Price"
-              name="totalPrice"
-              value={formData.totalPrice}
-              onChange={handleChange}
-              placeholder="0.00"
-              variant="outlined"
-              size="small"
-              slotProps={{
-                htmlInput: { min: '0', step: 'any' },
-                input: {
-                  startAdornment: <InputAdornment position="start">₹</InputAdornment>
-                }
-              }}
-            />
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                required
+                label="Occasion"
+                name="occasion"
+                value={formData.occasion}
+                onChange={handleChange}
+                sx={fieldStyle}
+              />
+            </Grid>
 
-            {/* LOCATION TYPE */}
-            <TextField
-              select
-              fullWidth
-              label="Location Type"
-              name="locationType"
-              value={formData.locationType}
-              onChange={handleChange}
-              variant="outlined"
-              size="small"
-            >
-              <MenuItem value="At Home (Doorstep)">At Home (Doorstep)</MenuItem>
-              <MenuItem value="At Expert Studio">At Expert Studio</MenuItem>
-            </TextField>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                multiline
+                rows={2}
+                label="Service Address"
+                name="serviceAddress"
+                value={formData.serviceAddress}
+                onChange={handleChange}
+                sx={fieldStyle}
+              />
+            </Grid>
 
-            {/* SERVICE ADDRESS */}
-            <TextField
-              fullWidth
-              label="Service Address"
-              name="serviceAddress"
-              value={formData.serviceAddress}
-              onChange={handleChange}
-              placeholder="Enter address details"
-              variant="outlined"
-              size="small"
-              multiline
-              rows={2}
-            />
-
-            {/* WARNING NOTE */}
-            <Alert severity="warning" sx={{ borderRadius: 2 }}>
-              Submitting updates will send this request back to the Expert for confirmation.
-            </Alert>
-
-          </Stack>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Total Price (₹)"
+                value={totalPrice.toFixed(2)}
+                disabled
+              />
+            </Grid>
+          </Grid>
         </DialogContent>
 
-        {/* FOOTER ACTIONS */}
-        <DialogActions sx={{ p: 2, justifyContent: 'space-between' }}>
-          <Button 
-            type="button" 
-            onClick={onClose} 
-            variant="outlined" 
-            color="inherit"
-            sx={{ px: 3 }}
+        <DialogActions sx={{ p: 2 }}>
+          <Button
+            onClick={onClose}
+            variant="outlined"
           >
             Cancel
           </Button>
-          <Button 
-            type="submit" 
-            variant="contained" 
-            color="primary"
-            sx={{ px: 3, fontWeight: 700 }}
+
+          <Button
+            type="submit"
+            variant="contained"
+            sx={{
+              backgroundColor: "#A33A5E",
+              "&:hover": {
+                backgroundColor: "#8C2B4E"
+              }
+            }}
           >
             Submit Updates
           </Button>

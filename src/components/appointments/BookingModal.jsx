@@ -13,7 +13,10 @@ import {
   Autocomplete
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import apiClient from '../../services/apiClient';
+// import { getCategories } from '../../services/categoryService';
+// import { getAllExperts } from '../../services/expertService';
+import { getCustomerByUserId } from '../../services/customerService';
+import { getAuthData } from '../../utils/authStorage';
 
 const TIME_SLOTS = [
   '10:00 AM', '10:30 AM',
@@ -33,9 +36,7 @@ const LOCATION_TYPES = [
 ];
 
 const INITIAL_STATE = {
-  serviceCategoryId: '',
-  expertId: '',
-  serviceTypeId: '',        
+  serviceTypeId: '',
   appointmentDate: '',
   startTime: '',
   endTime: '',
@@ -71,90 +72,101 @@ export default function BookingModal({
   open = false,
   onClose,
   onSubmit,
-  services = [],
-  experts = []
+  selectedExpert,
+  selectedCategoryId,
+  selectedCategoryName
 }) {
   const [formData, setFormData] = useState(INITIAL_STATE);
-  const [fetchedCategories, setFetchedCategories] = useState([]);
-  const [loadingCategories, setLoadingCategories] = useState(false);
+  // const [fetchedCategories, setFetchedCategories] = useState([]);
+  // const [loadingCategories, setLoadingCategories] = useState(false);
 
-  const [fetchedExperts, setFetchedExperts] = useState([]);
-  const [loadingExperts, setLoadingExperts] = useState(false);
+  // const [fetchedExperts, setFetchedExperts] = useState([]);
+  // const [loadingExperts, setLoadingExperts] = useState(false);
 
   const [addressOptions, setAddressOptions] = useState([]);
   const [loadingAddresses, setLoadingAddresses] = useState(false);
+  const [customerProfile, setCustomerProfile] = useState(null);
+  const [selectedAddress, setSelectedAddress] =useState(null);
 
   const todayDate = new Date().toISOString().split('T')[0];
+
+//   useEffect(() => {
+//   if (selectedExpert?.hourlyCharges) {
+//     setFormData((prev) => ({
+//       ...prev,
+//       totalPrice: selectedExpert.hourlyCharges
+//     }));
+//   }
+// }, [selectedExpert]);
 
   useEffect(() => {
     if (open) {
       // 1. Fetch Categories
-      if (!services || services.length === 0) {
-        setLoadingCategories(true);
-        apiClient.getCategories()
-          .then((data) => setFetchedCategories(Array.isArray(data) ? data : (data?.data || [])))
-          .catch((err) => console.error('Failed to load categories:', err))
-          .finally(() => setLoadingCategories(false));
-      }
+      // if (!services || services.length === 0) {
+      //   setLoadingCategories(true);
+      //  getCategories()
+      //     .then((data) => setFetchedCategories(Array.isArray(data) ? data : (data?.data || [])))
+      //     .catch((err) => console.error('Failed to load categories:', err))
+      //     .finally(() => setLoadingCategories(false));
+      // }
 
-      // 2. Fetch Experts
-      if (!experts || experts.length === 0) {
-        setLoadingExperts(true);
-        apiClient.getExperts()
-          .then((data) => setFetchedExperts(Array.isArray(data) ? data : (data?.data || [])))
-          .catch((err) => console.error('Failed to load experts:', err))
-          .finally(() => setLoadingExperts(false));
-      }
+     
+
+      // // 2. Fetch Experts
+      // if (!experts || experts.length === 0) {
+      //   setLoadingExperts(true);
+      //   getAllExperts()
+      //     .then((data) => setFetchedExperts(Array.isArray(data) ? data : (data?.data || [])))
+      //     .catch((err) => console.error('Failed to load experts:', err))
+      //     .finally(() => setLoadingExperts(false));
+      // }
+
+      
 
       // 3. Fetch Registered Address matching database schema
       const loadUserAddresses = async () => {
-        setLoadingAddresses(true);
-        const options = [];
+          setLoadingAddresses(true);
 
-        try {
-          const storedUserStr = localStorage.getItem('user');
-          const parsedStorage = storedUserStr ? JSON.parse(storedUserStr) : null;
-          const userObj = parsedStorage?.user || parsedStorage;
-          const currentUserId = userObj?.userId || userObj?.id;
+          try {
+            const authData = getAuthData();
 
-          if (currentUserId) {
-            let profileResponse = null;
-            if (apiClient.getUserProfile) {
-              profileResponse = await apiClient.getUserProfile(currentUserId);
-            } else if (apiClient.getProfile) {
-              profileResponse = await apiClient.getProfile(currentUserId);
-            }
+            const userId = authData?.userId;
 
-            const profileData = profileResponse?.data || profileResponse || userObj;
+            if (!userId) return;
 
-            const registeredAddressLine = 
-              profileData?.address?.addressLine || 
-              profileData?.addressLine || 
-              profileData?.address || 
-              profileData?.streetAddress;
+            const profileData = await getCustomerByUserId(userId);
+            console.log("profileData", profileData);
 
-            if (registeredAddressLine) {
+            setCustomerProfile(profileData);
+
+            const options = [];
+
+            if (profileData?.location) {
               options.push({
-                label: `${registeredAddressLine} (Registered Address)`,
-                value: registeredAddressLine,
-                addressId: profileData?.addressId || profileData?.address?.addressId || null
+                label: `${profileData.location} (Registered Address)`,
+                value: profileData.location,
+                addressId: profileData.addressId
               });
             }
+            console.log("options", options);
+
+            setAddressOptions(options);
+          } catch (error) {
+            console.error(
+              "Error loading customer profile:",
+              error
+            );
+          } finally {
+            setLoadingAddresses(false);
           }
-        } catch (error) {
-          console.error('Error loading registered address:', error);
-        } finally {
-          setAddressOptions(options);
-          setLoadingAddresses(false);
-        }
-      };
+        };
 
       loadUserAddresses();
     }
-  }, [open, services, experts]);
+  }, [open,selectedExpert]);
 
-  const availableCategories = services.length > 0 ? services : fetchedCategories;
-  const availableExperts = experts.length > 0 ? experts : fetchedExperts;
+  // const availableCategories = services.length > 0 ? services : fetchedCategories;
+  // const availableExperts = experts.length > 0 ? experts : fetchedExperts;
 
   const handleReset = () => {
     setFormData(INITIAL_STATE);
@@ -172,16 +184,18 @@ export default function BookingModal({
     const { name, value } = e.target;
 
     setFormData((prev) => {
-      const updated = { ...prev, [name]: value };
+      const updated = { ...prev, 
+        [name]: value 
+      };
 
-      if (name === 'serviceCategoryId') {
-        const selectedService = availableCategories.find(
-          (s) => String(s.serviceCategoryId || s.id || s.serviceId) === String(value)
-        );
-        if (selectedService && (selectedService.price || selectedService.totalPrice || selectedService.cost)) {
-          updated.totalPrice = selectedService.price || selectedService.totalPrice || selectedService.cost;
-        }
-      }
+      // if (name === 'serviceCategoryId') {
+      //   const selectedService = availableCategories.find(
+      //     (s) => String(s.serviceCategoryId || s.id || s.serviceId) === String(value)
+      //   );
+      //   if (selectedService && (selectedService.price || selectedService.totalPrice || selectedService.cost)) {
+      //     updated.totalPrice = selectedService.price || selectedService.totalPrice || selectedService.cost;
+      //   }
+      // }
 
       if (name === 'startTime' && value) {
         const startIndex = TIME_SLOTS.indexOf(value);
@@ -198,42 +212,82 @@ export default function BookingModal({
   };
 
   const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!onSubmit) return;
+  e.preventDefault();
 
-    // Retrieve user details from localStorage
-    const storedUserStr = localStorage.getItem('user');
-    const parsedStorage = storedUserStr ? JSON.parse(storedUserStr) : null;
-    const userObj = parsedStorage?.user || parsedStorage;
-    const currentCustomerId = Number(userObj?.userId || userObj?.id || 1);
+  if (!onSubmit) return;
 
-    // Check if entered address matches a registered address option
-    const matchedOption = addressOptions.find(
-      (opt) => opt.value.toLowerCase() === formData.serviceAddress.trim().toLowerCase()
-    );
+  if (!customerProfile) {
+    console.error("Customer profile not found");
+    return;
+  }
 
-    // Calculate duration in hours
-    const duration = calculateDurationHours(formData.startTime, formData.endTime);
+  const matchedOption = addressOptions.find(
+    (opt) =>
+      opt.value.toLowerCase() ===
+      formData.serviceAddress.trim().toLowerCase()
+  );
 
-    // Construct backend DTO-compliant payload
-    const sanitizedPayload = {
-      appointmentId: null,
-      customerId: currentCustomerId,
-      expertId: Number(formData.expertId),
-      serviceCategoryId: Number(formData.serviceCategoryId),
-      appointmentDate: formData.appointmentDate,
-      startTime: convertTo24Hour(formData.startTime), // HH:mm:ss
-      endTime: convertTo24Hour(formData.endTime),     // HH:mm:ss
-      occasion: formData.occasion.trim(),
-      durationHours: duration,
-      totalPrice: Number(String(formData.totalPrice).replace(/[^0-9.-]+/g, '')) || 0,
-      addressId: matchedOption?.addressId ? Number(matchedOption.addressId) : 0,
-      serviceAddress: formData.serviceAddress.trim()
-    };
+  const duration = calculateDurationHours(
+    formData.startTime,
+    formData.endTime
+  );
 
-    onSubmit(sanitizedPayload);
-    handleReset();
+ console.log("customerProfile", customerProfile);
+console.log("matchedOption", matchedOption);
+console.log("addressOptions", addressOptions);
+console.log("selectedAddress", selectedAddress);
+
+  const sanitizedPayload = {
+    appointmentId: null,
+
+    customerId: customerProfile.customerId,
+
+    // expertId: Number(formData.expertId),
+
+    // serviceCategoryId: Number(
+    //   formData.serviceCategoryId
+    // ),
+
+    expertId: Number(selectedExpert?.expertId),
+
+    serviceCategoryId: Number( selectedCategoryId ),
+
+    appointmentDate:
+      formData.appointmentDate,
+
+    startTime: convertTo24Hour(
+      formData.startTime
+    ),
+
+    endTime: convertTo24Hour(
+      formData.endTime
+    ),
+
+    occasion: formData.occasion.trim(),
+
+    durationHours: duration,
+
+    // totalPrice:
+    //   Number(
+    //     String(formData.totalPrice).replace(
+    //       /[^0-9.-]+/g,
+    //       ""
+    //     )
+    //   ) || 0,
+
+    totalPrice:Number(totalPrice.toFixed(2)),
+
+   addressId: Number(selectedAddress?.addressId || 0),
+
+    serviceAddress:
+      formData.serviceAddress.trim()
   };
+
+  console.log("Final Payload:", sanitizedPayload);
+  onSubmit(sanitizedPayload);
+
+  handleReset();
+};
 
   const filteredEndTimeSlots = TIME_SLOTS.filter((slot) => {
     if (!formData.startTime) return true;
@@ -250,6 +304,10 @@ export default function BookingModal({
     },
     '& .MuiInputLabel-root': { color: '#1A1A1A', fontWeight: 600 }
   };
+
+  const durationHours = calculateDurationHours(formData.startTime,formData.endTime);
+
+const totalPrice =(selectedExpert?.hourlyCharges || 0) *durationHours;
 
   return (
     <Dialog
@@ -285,6 +343,15 @@ export default function BookingModal({
             {/* Service */}
             <Grid size={{ xs: 12, sm: 6 }}>
               <TextField
+                fullWidth
+                label="Service"
+                value={selectedCategoryName || ''}
+                disabled
+                sx={fieldStyle}
+              />
+            </Grid>
+            {/* <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
                 select
                 fullWidth
                 required
@@ -308,10 +375,21 @@ export default function BookingModal({
                   );
                 })}
               </TextField>
-            </Grid>
+            </Grid> */}
 
             {/* Expert */}
+
             <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Expert"
+                value={selectedExpert?.fullName || selectedExpert?.name || ''}
+                disabled
+                sx={fieldStyle}
+              />
+            </Grid>
+            
+            {/* <Grid size={{ xs: 12, sm: 6 }}>
               <TextField
                 select
                 fullWidth
@@ -336,7 +414,7 @@ export default function BookingModal({
                   );
                 })}
               </TextField>
-            </Grid>
+            </Grid> */}
 
             {/* Location Type */}
             <Grid size={{ xs: 12, sm: 6 }}>
@@ -451,8 +529,17 @@ export default function BookingModal({
                   setFormData((prev) => ({ ...prev, serviceAddress: newInputValue }));
                 }}
                 onChange={(event, newValue) => {
-                  const val = typeof newValue === 'string' ? newValue : newValue?.value || '';
-                  setFormData((prev) => ({ ...prev, serviceAddress: val }));
+                  setSelectedAddress(newValue);
+
+                  const val =
+                    typeof newValue === "string"
+                      ? newValue
+                      : newValue?.label || "";
+
+                  setFormData((prev) => ({
+                    ...prev,
+                    serviceAddress: val,
+                  }));
                 }}
                 renderInput={(params) => (
                   <TextField
@@ -468,16 +555,13 @@ export default function BookingModal({
 
             {/* Total Price */}
             <Grid size={{ xs: 12 }}>
-              <TextField
-                fullWidth
-                required
-                label="Total Price (₹)"
-                placeholder="Enter total price"
-                name="totalPrice"
-                value={formData.totalPrice}
-                onChange={handleChange}
-                sx={fieldStyle}
-              />
+             <TextField
+              fullWidth
+              label="Total Price (₹)"
+              value={totalPrice.toFixed(2)}
+              disabled
+              sx={fieldStyle}
+            />
             </Grid>
 
           </Grid>
@@ -489,7 +573,7 @@ export default function BookingModal({
             fullWidth
             variant="contained"
             size="large"
-            disabled={loadingCategories || loadingExperts}
+            disabled={false}
             sx={{
               backgroundColor: '#A33A5E',
               '&:hover': { backgroundColor: '#8C2B4E' },

@@ -195,15 +195,12 @@ export default function ExpertAppointmentList({
             || fb.customerName 
             || 'Valued Client';
 
-          const matchedService = servicesList.find(
-            (srv) => srv.serviceCategoryId === matchedApt.serviceCategoryId || srv.id === matchedApt.serviceCategoryId
-          );
-
-          const serviceTitle = 
-            matchedApt.serviceCategoryName || 
-            matchedApt.serviceName || 
-            matchedApt.service || 
-            (matchedService ? matchedService.categoryName || matchedService.serviceName || matchedService.name : null);
+        const serviceTitle =
+          matchedApt.serviceCategoryName ||
+          matchedApt.serviceName ||
+          matchedApt.service ||
+          fb.serviceCategoryName ||
+          null;
 
           const occasionTitle = matchedApt.occasion;
 
@@ -348,16 +345,11 @@ export default function ExpertAppointmentList({
           || `${item.customer?.userProfile?.firstName || ''} ${item.customer?.userProfile?.lastName || ''}`.trim()
           || 'Valued Client';
 
-        const matchedService = servicesList.find(
-          (srv) => srv.serviceCategoryId === item.serviceCategoryId || srv.id === item.serviceCategoryId
-        );
-
-        const serviceTitle = 
-          item.serviceCategoryName || 
-          item.serviceName || 
-          item.service || 
-          (matchedService ? matchedService.categoryName || matchedService.serviceName || matchedService.name : null);
-
+       const serviceTitle =
+          item.serviceCategoryName ||
+          item.serviceName ||
+          item.service ||
+          null;
         const occasionTitle = item.occasion;
 
         let displayTitle = 'Beauty Service';

@@ -1,5 +1,10 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import apiClient from '../../services/apiClient';
+import {
+  createOrUpdateAppointment,
+  getAppointments,
+  updateAppointmentStatus,
+  cancelAppointment,
+} from '../../services/appointmentService';
 
 // Helper to extract clean error message string from axios error responses
 const formatErrorMessage = (error, defaultMsg) => {
@@ -45,97 +50,173 @@ const getStatusId = (statusStr) => {
   return 1;
 };
 
-// 1. Fetch appointments by userType ('Customer' | 'Expert' | 0 | 1) and userId
+// Fetch appointments
 export const fetchAppointmentsThunk = createAsyncThunk(
-  'appointments/fetchAppointments',
+  "appointments/fetchAppointments",
   async (payload, { rejectWithValue }) => {
     try {
-      let userType = 1; // Default to Customer (1)
+      let userType = 1;
       let userId = payload;
 
-      // Handle object payload ({ userType, userId }) or primitive ID payload
-      if (typeof payload === 'object' && payload !== null) {
-        userType = payload.userType === 'Expert' || payload.userType === 0 ? 0 : 1;
+      if (typeof payload === "object" && payload !== null) {
+        userType =
+          payload.userType === "Expert" || payload.userType === 0
+            ? 0
+            : 1;
+
         userId = payload.userId;
       }
 
-      return await apiClient.getAppointmentsByUserTypeAndId(userType, userId);
+      const response = await getAppointments(userType, userId);
+
+      console.log("Appointments API Success:", response);
+
+      return response;
+      // return await getAppointments(userType, userId);
     } catch (error) {
-      return rejectWithValue(formatErrorMessage(error, 'Failed to fetch appointments'));
-    }
+        console.log("Appointments Error:", error);
+        console.log("Error Response:", error.response);
+        console.log("Error Data:", error.response?.data);
+
+        return rejectWithValue(
+          formatErrorMessage(error, "Failed to fetch appointments")
+        );
+      }
   }
 );
 
-// 2. Create or Update Booking
+// Create Booking
 export const createBookingThunk = createAsyncThunk(
-  'appointments/createBooking',
+  "appointments/createBooking",
   async (payload, { rejectWithValue }) => {
     try {
-      return await apiClient.createOrUpdateAppointment(payload);
+      console.log("REQUEST PAYLOAD", payload);
+
+      const response = await createOrUpdateAppointment(payload);
+
+      return response;
     } catch (error) {
-      return rejectWithValue(formatErrorMessage(error, 'Failed to create booking'));
+      console.log("API ERROR:", error);
+      console.log("API ERROR RESPONSE:", error.response);
+      console.log("API ERROR DATA:", error.response?.data);
+
+      return rejectWithValue(
+        error.response?.data ||
+          error.message ||
+          "Failed to create booking"
+      );
     }
   }
 );
 
-// Alias for backwards compatibility
+// Alias
 export const createAppointmentThunk = createBookingThunk;
 
-// 3. Update appointment details thunk
+// Update Appointment
 export const updateAppointmentThunk = createAsyncThunk(
-  'appointments/updateAppointment',
+  "appointments/updateAppointment",
   async (payload, { rejectWithValue }) => {
     try {
-      return await apiClient.createOrUpdateAppointment(payload);
+      const response = await createOrUpdateAppointment(
+        payload
+      );
+
+      return response;
     } catch (error) {
-      return rejectWithValue(formatErrorMessage(error, 'Failed to update appointment'));
+      return rejectWithValue(
+        formatErrorMessage(
+          error,
+          "Failed to update appointment"
+        )
+      );
     }
   }
 );
 
-// 4. Cancel appointment thunk
+// Cancel Appointment
 export const cancelAppointmentThunk = createAsyncThunk(
-  'appointments/cancelAppointment',
+  "appointments/cancelAppointment",
   async (appointmentId, { rejectWithValue }) => {
     try {
-      const response = await apiClient.cancelAppointment(appointmentId);
-      return { appointmentId, response };
-    } catch (error) {
-      return rejectWithValue(formatErrorMessage(error, 'Failed to cancel appointment'));
-    }
-  }
-);
+      const response =
+        await cancelAppointment(
+          appointmentId
+        );
 
-// 5. Update status thunk (Accept / Decline / Complete)
-export const updateAppointmentStatusThunk = createAsyncThunk(
-  'appointments/updateStatus',
-  async ({ appointmentId, status, appointmentStatusId }, { rejectWithValue }) => {
-    try {
-      const rawStatus = appointmentStatusId ?? status;
-      const targetStatusId = getStatusId(rawStatus);
-      let response;
-
-      // Route to cancel endpoint if status is 3 (Cancelled/Declined)
-      if (targetStatusId === 3) {
-        response = await apiClient.cancelAppointment(appointmentId);
-      } else {
-        const payload = {
-          appointmentStatusId: targetStatusId
-        };
-        response = await apiClient.updateAppointmentStatus(appointmentId, payload);
-      }
-
-      return { 
-        appointmentId, 
-        status: typeof status === 'string' ? status : getStatusName(targetStatusId), 
-        appointmentStatusId: targetStatusId, 
-        response 
+      return {
+        appointmentId,
+        response,
       };
     } catch (error) {
-      return rejectWithValue(formatErrorMessage(error, 'Failed to update status'));
+      return rejectWithValue(
+        formatErrorMessage(
+          error,
+          "Failed to cancel appointment"
+        )
+      );
     }
   }
 );
+
+// Update Appointment Status
+export const updateAppointmentStatusThunk =
+  createAsyncThunk(
+    "appointments/updateStatus",
+    async (
+      {
+        appointmentId,
+        status,
+        appointmentStatusId,
+      },
+      { rejectWithValue }
+    ) => {
+      try {
+        const rawStatus =
+          appointmentStatusId ?? status;
+
+        const targetStatusId =
+          getStatusId(rawStatus);
+
+        let response;
+
+        if (targetStatusId === 3) {
+          response =
+            await cancelAppointment(
+              appointmentId
+            );
+        } else {
+          response =
+            await updateAppointmentStatus(
+              appointmentId,
+              {
+                appointmentStatusId:
+                  targetStatusId,
+              }
+            );
+        }
+
+        return {
+          appointmentId,
+          status:
+            typeof status === "string"
+              ? status
+              : getStatusName(
+                  targetStatusId
+                ),
+          appointmentStatusId:
+            targetStatusId,
+          response,
+        };
+      } catch (error) {
+        return rejectWithValue(
+          formatErrorMessage(
+            error,
+            "Failed to update status"
+          )
+        );
+      }
+    }
+  );
 
 const appointmentSlice = createSlice({
   name: 'appointments',
