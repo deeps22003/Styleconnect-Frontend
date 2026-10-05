@@ -16,8 +16,8 @@ import { FormProgress } from "../../components/form/FormProgress";
 import { registerUser } from "../../services/authService";
 import { Navbar } from "../../components/landing/Navbar";
 
-import { fetchStates,fetchAreasByCity,fetchCitiesByDistrict,fetchDistrictsByState } from "../slices/loactionSlice";
-import { clearAreas,clearCities } from "../slices/loactionSlice";
+import { fetchStates,fetchAreasByCity,fetchCitiesByDistrict,fetchDistrictsByState } from "../slices/locationSlice";
+import { clearAreas,clearCities } from "../slices/locationSlice";
 import { createAddress } from "../../services/locationService";
 import { fetchRoles } from "../slices/roleSlice";
 import { validateFields } from "../../helpers/formValidator";
@@ -42,8 +42,13 @@ export const CustomerRegistration = () => {
   const credentials = location.state || {};
   const [customer, setCustomer] = useState(customerData);
   const dispatch=useDispatch();
-  const {states,districts,cities,areas}=useSelector((state)=>state.location);
-  const {roles}=useSelector((state)=>state.roles);
+  const {
+    states = [],
+    districts = [],
+    cities = [],
+    areas = [],
+  } = useSelector((state) => state.location || {});
+  const { roles = [] } = useSelector((state) => state.roles || {});
   const navigate = useNavigate();
   const [errors, setErrors] = useState({});
 

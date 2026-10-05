@@ -39,6 +39,11 @@ export const expertFields = [
     name: "gender",
     placeholder: "Select Gender",
     validate: validateGender,
+    options: [
+      { value: "male", label: "Male" },
+      { value: "female", label: "Female" },
+      { value: "", label: "Prefer not to say" },
+    ],
   },
   {
     type: "text",

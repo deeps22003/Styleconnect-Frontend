@@ -11,7 +11,7 @@ import {
   Stack, 
   CircularProgress 
 } from '@mui/material';
-import apiClient from '../../services/apiClient';
+import { getFeedbackRatingByAppointmentId } from '../../services/feedbackService';
 
 const EMPTY_OBJECT = {};
 
@@ -137,7 +137,7 @@ export default function AppointmentList({
     }
 
     try {
-      const existingFeedback = await apiClient.getFeedbackRatingByAppointmentId(targetAppointmentId);
+      const existingFeedback = await getFeedbackRatingByAppointmentId(targetAppointmentId);
 
       if (existingFeedback) {
         onLeaveFeedback({

@@ -11,6 +11,9 @@ const ROUTES = {
   CUSTOMER_DASHBOARD:"/customer/dashboard",
   EXPERT_DASHBOARD:"/expert/dashboard",
 
+  CUSTOMERAPPOINTMENT_DASHBOARD:"/customer/appointments/dashboard",
+  EXPERTAPPOINTMENT_DASHBOARD:"/expert/appointments/dashboard",
+
   EXPERT_PROFILE: "/experts/:expertId",
   EXPERT_LANDING:"/for-experts",
   CATEGORY_EXPERTS: "/categories/:categoryId",

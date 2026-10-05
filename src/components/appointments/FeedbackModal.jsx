@@ -16,7 +16,7 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import StarIcon from '@mui/icons-material/Star';
-import apiClient from '../../services/apiClient';
+import { getFeedbackRatingByAppointmentId, createOrUpdateFeedbackRating } from '../../services/feedbackService';
 
 export default function FeedbackModal({ appointment, onClose, onSuccess }) {
   const [ratingValue, setRatingValue] = useState(5);
@@ -58,7 +58,7 @@ export default function FeedbackModal({ appointment, onClose, onSuccess }) {
       setErrorMessage('');
 
       try {
-        const existingData = await apiClient.getFeedbackRatingByAppointmentId(resolvedAppointmentId);
+        const existingData = await getFeedbackRatingByAppointmentId(resolvedAppointmentId);
 
         if (isMounted) {
           if (existingData) {
@@ -129,7 +129,7 @@ export default function FeedbackModal({ appointment, onClose, onSuccess }) {
     };
 
     try {
-      await apiClient.createOrUpdateFeedbackRating(payload);
+      await createOrUpdateFeedbackRating(payload);
       handleClose();
       if (onSuccess) onSuccess();
     } catch (error) {

@@ -56,7 +56,40 @@ const API_ENDPOINTS = {
     GET_CITIES_BY_DISTRICTID:(districtId)=>`/api/Locations/districts/${districtId}/cities`,
     GET_AREAS_BY_CITYID:(cityId)=>`/api/Locations/cities/${cityId}/areas`,
     CREATE_ADDRESS:"/api/Address"
-  }
+  },
+   APPOINTMENTS: {
+  // Get appointment by appointment ID
+  GET_APPOINTMENT_BY_ID: (appointmentId) =>
+    `/Appointments/${appointmentId}`,
+ 
+  // Get appointments by user type and user ID
+  GET_USER_APPOINTMENTS: (userType, userId) =>
+    `/Appointments/${userType}/${userId}`,
+ 
+  // Create or update appointment
+  CREATE_OR_UPDATE_APPOINTMENT:
+    "/CreateorUpdateAppointment",
+ 
+  // Update appointment status
+  UPDATE_APPOINTMENT_STATUS: (appointmentId) =>
+    `/GetAppointmentStatus/${appointmentId}`,
+ 
+  // Cancel appointment
+  CANCEL_APPOINTMENT: (appointmentId) =>
+    `/GetAppointmentCancle/${appointmentId}`,
+},
+FEEDBACK: {
+  CREATE_OR_UPDATE_FEEDBACK:
+    "/CreateorUpdateFeedbackRating",
+ 
+  GET_FEEDBACK_BY_APPOINTMENT: (appointmentId) =>
+    `/GetFeedbackRating/${appointmentId}`,
+ 
+  GET_FEEDBACK_BY_EXPERT: (expertId) =>
+    `/GetFeedbackRatingByExpert/${expertId}`,
+},
+ 
+
 };
 
 export default API_ENDPOINTS;

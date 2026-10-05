@@ -20,7 +20,7 @@ import ProfileCard from '../components/appointments/ProfileCard';
 import ExpertAppointmentList from '../components/appointments/ExpertAppointmentList';
 import apiClient from '../services/apiClient';
 
-export default function ExpertDashboard() {
+export default function ExpertAppointmentDashboard() {
   const dispatch = useDispatch();
 
   const authUser = useSelector((state) => state.auth?.user || state.user);

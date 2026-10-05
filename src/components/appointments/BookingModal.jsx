@@ -88,23 +88,25 @@ export default function BookingModal({
 
   useEffect(() => {
     if (open) {
+      /*
       // 1. Fetch Categories
-      if (!services || services.length === 0) {
-        setLoadingCategories(true);
-        apiClient.getCategories()
-          .then((data) => setFetchedCategories(Array.isArray(data) ? data : (data?.data || [])))
-          .catch((err) => console.error('Failed to load categories:', err))
-          .finally(() => setLoadingCategories(false));
-      }
+      // if (!services || services.length === 0) {
+      //   setLoadingCategories(true);
+      //   apiClient.getCategories()
+      //     .then((data) => setFetchedCategories(Array.isArray(data) ? data : (data?.data || [])))
+      //     .catch((err) => console.error('Failed to load categories:', err))
+      //     .finally(() => setLoadingCategories(false));
+      // }
 
       // 2. Fetch Experts
-      if (!experts || experts.length === 0) {
-        setLoadingExperts(true);
-        apiClient.getExperts()
-          .then((data) => setFetchedExperts(Array.isArray(data) ? data : (data?.data || [])))
-          .catch((err) => console.error('Failed to load experts:', err))
-          .finally(() => setLoadingExperts(false));
-      }
+      // if (!experts || experts.length === 0) {
+      //   setLoadingExperts(true);
+      //   apiClient.getExperts()
+      //     .then((data) => setFetchedExperts(Array.isArray(data) ? data : (data?.data || [])))
+      //     .catch((err) => console.error('Failed to load experts:', err))
+      //     .finally(() => setLoadingExperts(false));
+      // }
+      */
 
       // 3. Fetch Registered Address matching database schema
       const loadUserAddresses = async () => {
@@ -153,8 +155,8 @@ export default function BookingModal({
     }
   }, [open, services, experts]);
 
-  const availableCategories = services.length > 0 ? services : fetchedCategories;
-  const availableExperts = experts.length > 0 ? experts : fetchedExperts;
+  // const availableCategories = services.length > 0 ? services : fetchedCategories;
+  // const availableExperts = experts.length > 0 ? experts : fetchedExperts;
 
   const handleReset = () => {
     setFormData(INITIAL_STATE);

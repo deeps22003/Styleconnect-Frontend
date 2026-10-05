@@ -1,6 +1,6 @@
 import { Grid } from "@mui/material";
 import { ExpertCard } from "./ExpertsCard";
-import { expertsData } from "../../features/data/expertsData";
+// import { expertsData } from "../../features/data/expertsData";
 
 export const ExpertsGrid = ({experts=[]}) => {
   return (

@@ -6,7 +6,7 @@ export default function ProfileCard({
   name, 
   roleBadge, 
   avatarInitial, 
-  actionButtonText = '+ Book New Service', 
+  actionButtonText, 
   onActionClick, 
   onBookClick 
 }) {

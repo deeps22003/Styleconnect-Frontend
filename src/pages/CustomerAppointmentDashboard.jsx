@@ -18,13 +18,13 @@ import {
 
 import ProfileCard from '../components/appointments/ProfileCard';
 import AppointmentList from '../components/appointments/AppointmentList';
-import BookingModal from '../components/appointments/BookingModal';
+//import BookingModal from '../components/appointments/BookingModal';
 import EditBookingModal from '../components/appointments/EditBookingModal';
 import FeedbackModal from '../components/appointments/FeedbackModal';
 
 const EMPTY_OBJECT = {};
 
-export default function CustomerDashboard() {
+export default function CustomerAppointmentDashboard() {
   const dispatch = useDispatch();
 
   // 1. Resolve logged-in user dynamically from Redux or localStorage
@@ -159,7 +159,7 @@ export default function CustomerDashboard() {
           user={currentUser}
           name={currentUser?.name || currentUser?.fullName || `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim()}
           roleBadge={isExpert ? 'Expert Account' : 'Customer Account'}
-          actionButtonText="+ Book New Service"
+          actionButtonText="+ Book New Appointment"
           onActionClick={handleOpenModal}
           onBookClick={handleOpenModal}
         />
@@ -236,7 +236,7 @@ export default function CustomerDashboard() {
           />
         </Paper>
 
-        {/* Modals */}
+        {/* Modals
         {isModalOpen && (
           <BookingModal 
             open={isModalOpen}
@@ -248,7 +248,7 @@ export default function CustomerDashboard() {
             experts={experts}
             userAddresses={userAddresses}
           />
-        )}
+        )} */}
 
         {isEditModalOpen && (
           <EditBookingModal

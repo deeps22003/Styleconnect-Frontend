@@ -6,7 +6,7 @@ export const getCategories=async()=>{
         const response=await apiClient.get(
             API_ENDPOINTS.CATEGORY.GET_CATEGORIES
         );
-        return response.data;
+        return response.data.data;
     }catch(error){
         throw error;
     }

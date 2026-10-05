@@ -1,7 +1,7 @@
 import { useDispatch, useSelector } from "react-redux";
 
 import { RegistrationLayout } from "../../components/layout/RegistrationLayout";
-import { Navbar } from "../../components/landing/navbar";
+import { Navbar } from "../../components/landing/Navbar";
 import { HeroSection } from "../../components/landing/HeroSection";
 import { useNavigate } from "react-router-dom";
 import { customerNavItems } from "../data/navbarConfig";
