@@ -13,8 +13,13 @@ export const fetchStates = createAsyncThunk(
     try {
       return await getStates();
     } catch (error) {
-      return rejectWithValue(error);
-    }
+    return rejectWithValue(
+        error.response?.data?.message ||
+        error.message ||
+        "Request failed"
+    );
+}
+
   }
 );
 
@@ -24,8 +29,13 @@ export const fetchDistrictsByState = createAsyncThunk(
     try {
       return await getDistrictsByState(stateId);
     } catch (error) {
-      return rejectWithValue(error);
-    }
+    return rejectWithValue(
+        error.response?.data?.message ||
+        error.message ||
+        "Request failed"
+    );
+}
+
   }
 );
 
@@ -35,8 +45,13 @@ export const fetchCitiesByDistrict = createAsyncThunk(
     try {
       return await getCitiesByDistrict(districtId);
     } catch (error) {
-      return rejectWithValue(error);
-    }
+    return rejectWithValue(
+        error.response?.data?.message ||
+        error.message ||
+        "Request failed"
+    );
+}
+
   }
 );
 
@@ -46,8 +61,13 @@ export const fetchAreasByCity = createAsyncThunk(
     try {
       return await getAreasByCity(cityId);
     } catch (error) {
-      return rejectWithValue(error);
-    }
+    return rejectWithValue(
+        error.response?.data?.message ||
+        error.message ||
+        "Request failed"
+    );
+}
+
   }
 );
 

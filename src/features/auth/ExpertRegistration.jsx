@@ -63,6 +63,7 @@ export const ExpertRegistration = () => {
     cities,
     areas,
   } = useSelector((state) => state.location);
+  
   const {roles}=useSelector((state)=>state.roles);
 
   useEffect(() => {

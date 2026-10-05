@@ -11,7 +11,7 @@ import {
   Stack, 
   CircularProgress 
 } from '@mui/material';
-import apiClient from '../../services/apiClient';
+import { getFeedbackRatingByAppointmentId } from '../../services/feedbackService';
 
 const EMPTY_OBJECT = {};
 
@@ -74,6 +74,7 @@ export default function AppointmentList({
   appointments: propsAppointments, 
   onLeaveFeedback, 
   onEditAppointment, 
+  onCancelAppointment,
   customerId: propCustomerId
 }) {
   const dispatch = useDispatch();
@@ -92,6 +93,8 @@ export default function AppointmentList({
 
   const [expertsList, setExpertsList] = useState([]);
   const [servicesList, setServicesList] = useState([]);
+
+  console.log("activeCustomerId", activeCustomerId);
 
   useEffect(() => {
     if (!propsAppointments && activeCustomerId) {
@@ -137,7 +140,7 @@ export default function AppointmentList({
     }
 
     try {
-      const existingFeedback = await apiClient.getFeedbackRatingByAppointmentId(targetAppointmentId);
+      const existingFeedback = await getFeedbackRatingByAppointmentId(targetAppointmentId);
 
       if (existingFeedback) {
         onLeaveFeedback({
@@ -334,10 +337,70 @@ export default function AppointmentList({
                 {displayAddress}
               </Typography>
 
-              <Stack direction="row" spacing={1.5} sx={{ mt: 2, justifyContent: 'flex-start' }}>
+              <Stack
+                direction="row"
+                spacing={2}
+                alignItems="center"
+                sx={{ mt: 2, justifyContent: 'flex-start', flexWrap: 'wrap' }}
+              >
+                {hasFeedback && (
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: '#8C2B4E',
+                      fontWeight: 600
+                    }}
+                  >
+                    ⭐ {item.ratingValue}/5
+                  </Typography>
+                )}
+
+               
+                {/* Edit & Cancel Appointment Buttons */}
+                  {!isCompleted && !isCancelled && !isDeclined && (
+                    <>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        color="secondary"
+                        onClick={() => onEditAppointment?.(item)}
+                        sx={{
+                          borderRadius: '20px',
+                          textTransform: 'none',
+                          fontWeight: 600,
+                          px: 2
+                        }}
+                      >
+                        ✏️ Edit Appointment
+                      </Button>
+
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        size="small"
+                        onClick={() => {
+                            if (
+                              window.confirm(
+                                "Are you sure you want to cancel this appointment?"
+                              )
+                            ) {
+                              onCancelAppointment(item);
+                            }
+                          }}
+                        sx={{
+                          borderRadius: '20px',
+                          textTransform: 'none'
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  )}
+
+                {/* Feedback Button */}
                 {isCompleted && (
-                  <Button 
-                    variant={hasFeedback ? "outlined" : "contained"} 
+                  <Button
+                    variant={hasFeedback ? "outlined" : "contained"}
                     color="primary"
                     size="small"
                     onClick={() => handleFeedbackClick(item)}
@@ -348,19 +411,9 @@ export default function AppointmentList({
                       px: 2
                     }}
                   >
-                    {hasFeedback ? '✏️ Edit Feedback & Rating' : '★ Leave Feedback & Rating'}
-                  </Button>
-                )}
-
-                {!isCompleted && !isCancelled && (
-                  <Button 
-                    variant="outlined" 
-                    color="primary"
-                    size="small"
-                    disabled={isDeclined}
-                    onClick={() => onEditAppointment && onEditAppointment(item)}
-                  >
-                    ✏️ Edit Details
+                    {hasFeedback
+                      ? '✏️ Edit Feedback'
+                      : '★ Leave Feedback & Rating'}
                   </Button>
                 )}
               </Stack>

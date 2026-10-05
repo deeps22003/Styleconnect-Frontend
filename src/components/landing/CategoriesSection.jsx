@@ -103,7 +103,14 @@ export const CategoriesSection = ({
               }}
             >
               <Card
-                onClick={()=>navigate(`/categories/${service.serviceCategoryId}`)}
+                onClick={() =>
+                    navigate(`/categories/${service.serviceCategoryId}`, {
+                      state: {
+                        serviceCategoryId: service.serviceCategoryId,
+                        categoryName: service.categoryName,
+                      },
+                    })
+                  }
                 sx={{
                   borderRadius: 4,
                   overflow: "hidden",

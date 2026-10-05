@@ -1,134 +1,76 @@
-const BASE_URL = 'https://localhost:7211/api';
-
-/**
- * Safely retrieves Authorization and Content-Type headers from storage
- */
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {})
-  };
-};
-
-/**
- * Parses ASP.NET Core & custom API errors safely without stream locking
- */
-const handleResponseError = async (response) => {
-  let errorMessage = `HTTP Error ${response.status}`;
-
+import API_ENDPOINTS from "../constants/apiEndpoints";
+import apiClient from "./apiClient";
+ 
+export const getAppointments = async (userType, userId) => {
   try {
-    const textData = await response.text();
-
-    if (textData) {
-      try {
-        const errorData = JSON.parse(textData);
-
-        if (typeof errorData === 'string') {
-          errorMessage = errorData;
-        } else if (errorData.title || errorData.message) {
-          errorMessage = errorData.title || errorData.message;
-        } else if (errorData.errors && typeof errorData.errors === 'object') {
-          // Extract ASP.NET model validation state errors
-          const firstKey = Object.keys(errorData.errors)[0];
-          if (firstKey && errorData.errors[firstKey].length > 0) {
-            errorMessage = errorData.errors[firstKey][0];
-          }
-        }
-      } catch {
-        // Fallback for plain text responses
-        errorMessage = textData;
-      }
-    }
-  } catch {
-    errorMessage = `Request failed with status ${response.status}`;
+    const response = await apiClient.get(
+      API_ENDPOINTS.APPOINTMENTS.GET_USER_APPOINTMENTS(
+        userType,
+        userId
+      )
+    );
+ 
+    return response.data;
+  } catch (error) {
+    throw error;
   }
-
-  throw new Error(errorMessage);
 };
-
-/**
- * Helper to process API response bodies cleanly (handles 204 No Content)
- */
-const parseResponse = async (response) => {
-  if (!response.ok) {
-    await handleResponseError(response);
+ 
+export const getAppointmentById = async (appointmentId) => {
+  try {
+    const response = await apiClient.get(
+      API_ENDPOINTS.APPOINTMENTS.GET_APPOINTMENT_BY_ID(
+        appointmentId
+      )
+    );
+ 
+    return response.data;
+  } catch (error) {
+    throw error;
   }
-
-  // Handle 204 No Content or empty responses safely
-  if (response.status === 204) {
-    return { success: true };
+};
+ 
+export const createOrUpdateAppointment = async (appointmentData) => {
+  try {
+    const response = await apiClient.post(
+      API_ENDPOINTS.APPOINTMENTS.CREATE_OR_UPDATE_APPOINTMENT,
+      appointmentData
+    );
+ 
+    return response.data;
+  } catch (error) {
+    throw error;
   }
-
-  const text = await response.text();
-  return text ? JSON.parse(text) : {};
 };
-
-// Named Export: GET Customer Appointments
-export const getCustomerAppointments = async (userId = 1) => {
-  const response = await fetch(`${BASE_URL}/Appointments/Customer/${userId}`, {
-    method: 'GET',
-    headers: getAuthHeaders()
-  });
-
-  return await parseResponse(response);
+ 
+export const updateAppointmentStatus = async (
+  appointmentId,
+  statusData
+) => {
+  try {
+    const response = await apiClient.patch(
+      API_ENDPOINTS.APPOINTMENTS.UPDATE_APPOINTMENT_STATUS(
+        appointmentId
+      ),
+      statusData
+    );
+ 
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
 };
-
-// Named Export: GET Expert Appointments
-export const getExpertAppointments = async (expertId = 1) => {
-  const response = await fetch(`${BASE_URL}/Appointments/Expert/${expertId}`, {
-    method: 'GET',
-    headers: getAuthHeaders()
-  });
-
-  return await parseResponse(response);
-};
-
-// Named Export: POST Create or Update Appointment
-export const createOrUpdateAppointment = async (bookingData) => {
-  const response = await fetch(`${BASE_URL}/CreateorUpdateAppointment`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(bookingData)
-  });
-
-  return await parseResponse(response);
-};
-
-// Named Export: PATCH Update Status (Aliased to match component imports)
-export const updateAppointmentStatus = async (appointmentId, status) => {
-  const payload = typeof status === 'string' ? { status } : status;
-
-  const response = await fetch(`${BASE_URL}/GetAppointmentStatus/${appointmentId}`, {
-    method: 'PATCH',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(payload)
-  });
-
-  return await parseResponse(response);
-};
-
-// Alias export for backwards compatibility
-export const updateStatus = updateAppointmentStatus;
-
-// Named Export: PATCH Cancel Appointment
+ 
 export const cancelAppointment = async (appointmentId) => {
-  const response = await fetch(`${BASE_URL}/GetAppointmentCancle/${appointmentId}`, {
-    method: 'PATCH',
-    headers: getAuthHeaders()
-  });
-
-  return await parseResponse(response);
+  try {
+    const response = await apiClient.patch(
+      API_ENDPOINTS.APPOINTMENTS.CANCEL_APPOINTMENT(
+        appointmentId
+      )
+    );
+ 
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
 };
-
-// Default Export Bundle
-export const appointmentService = {
-  getCustomerAppointments,
-  getExpertAppointments,
-  createOrUpdateAppointment,
-  updateAppointmentStatus,
-  updateStatus,
-  cancelAppointment
-};
-
-export default appointmentService;

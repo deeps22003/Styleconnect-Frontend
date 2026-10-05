@@ -50,13 +50,45 @@ const API_ENDPOINTS = {
     GET_ALLEXPERTS:"/api/Experts",
     GET_EXPERT_BY_ID:(expertId)=>`/api/Experts/${expertId}`
   },
+  CUSTOMERS:{
+    GET_CUSTOMER_BY_ID:(customerId)=>`/api/Customers/${customerId}`,
+    GET_CUSTOMER_BY_USERID:(userId)=>`api/Customers/user/${userId}`
+  },
   LOCATION:{
     GET_STATES:"/api/Locations/states",
     GET_DISTRICTS_BY_STATEID:(stateId)=> `/api/Locations/states/${stateId}/districts`,
     GET_CITIES_BY_DISTRICTID:(districtId)=>`/api/Locations/districts/${districtId}/cities`,
     GET_AREAS_BY_CITYID:(cityId)=>`/api/Locations/cities/${cityId}/areas`,
     CREATE_ADDRESS:"/api/Address"
-  }
+  },
+  APPOINTMENTS: {
+  GET_CUSTOMER_APPOINTMENTS: (userId) =>
+    `api/Appointments/Customer/${userId}`,
+
+  GET_EXPERT_APPOINTMENTS: (expertId) =>
+    `api/Appointments/Expert/${expertId}`,
+
+  GET_USER_APPOINTMENTS: (userType, userId) =>`api/Appointments/${userType}/${userId}`,
+
+  CREATE_OR_UPDATE_APPOINTMENT:
+    "api/CreateorUpdateAppointment",
+
+  UPDATE_APPOINTMENT_STATUS: (appointmentId) =>
+    `api/GetAppointmentStatus/${appointmentId}`,
+
+  CANCEL_APPOINTMENT: (appointmentId) =>
+    `api/GetAppointmentCancle/${appointmentId}`,
+},
+FEEDBACK: {
+  CREATE_OR_UPDATE_FEEDBACK:
+    "api/AddFeedbackRating",
+
+  GET_FEEDBACK_BY_APPOINTMENT: (appointmentId) =>
+    `api/GetFeedbackRating/${appointmentId}`,
+
+  GET_FEEDBACK_BY_EXPERT: (expertId) =>
+    `api/FeedbackRating/GetFeedbackRatingByExpert/${expertId}`,
+},
 };
 
 export default API_ENDPOINTS;

@@ -1,28 +1,35 @@
-import apiClient from './apiClient';
+import API_ENDPOINTS from "../constants/apiEndpoints";
+import apiClient from "./apiClient";
 
-/**
- * Creates a new feedback/rating or updates an existing one.
- * @param {Object} feedbackData - { ratingId, appointmentId, ratingValue, comments }
- */
-export const createOrUpdateFeedbackRating = async (feedbackData) => {
-  const response = await apiClient.post('/api/CreateorUpdateFeedbackRating', feedbackData);
+export const createOrUpdateFeedbackRating = async (
+  feedbackData
+) => {
+  const response = await apiClient.post(
+    API_ENDPOINTS.FEEDBACK.CREATE_OR_UPDATE_FEEDBACK,
+    feedbackData
+  );
+
   return response.data;
 };
 
-/**
- * Gets feedback and rating details for a specific appointment ID.
- * @param {number|string} appointmentId 
- */
-export const getFeedbackRatingByAppointmentId = async (appointmentId) => {
-  const response = await apiClient.get(`/api/GetFeedbackRating/${appointmentId}`);
-  return response.data;
-};
+export const getFeedbackRatingByAppointmentId =
+  async (appointmentId) => {
+    const response = await apiClient.get(
+      API_ENDPOINTS.FEEDBACK.GET_FEEDBACK_BY_APPOINTMENT(
+        appointmentId
+      )
+    );
 
-/**
- * Gets all feedback and ratings for a specific expert ID (for Expert Dashboard).
- * @param {number|string} expertId 
- */
-export const getFeedbackRatingByExpertId = async (expertId) => {
-  const response = await apiClient.get(`/api/GetFeedbackRatingByExpert/${expertId}`);
-  return response.data;
-};
+    return response.data;
+  };
+
+export const getFeedbackRatingByExpertId =
+  async (expertId) => {
+    const response = await apiClient.get(
+      API_ENDPOINTS.FEEDBACK.GET_FEEDBACK_BY_EXPERT(
+        expertId
+      )
+    );
+
+    return response.data;
+  };
